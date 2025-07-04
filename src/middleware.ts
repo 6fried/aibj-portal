@@ -4,9 +4,6 @@ import type { NextRequest } from 'next/server'
 // Routes qui nécessitent une authentification
 const protectedRoutes = ['/dashboard', '/members', '/events', '/profile']
 
-// Routes publiques (ne nécessitent pas d'authentification)
-const publicRoutes = ['/login', '/']
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -28,5 +25,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/members/:path*', '/events/:path*', '/profile/:path*', '/login']
+  matcher: ['/dashboard/:path*', '/members/:path*', '/events/:path*', '/profile/:path*']
 }
