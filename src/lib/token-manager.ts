@@ -1,11 +1,3 @@
-import { AiesecAuth } from './aiesec-auth'
-
-interface TokenInfo {
-  access_token: string
-  refresh_token: string
-  expires_at: number // timestamp
-}
-
 export class TokenManager {
   private static instance: TokenManager
   private refreshPromise: Promise<boolean> | null = null
