@@ -13,6 +13,10 @@ interface User {
   department?: string
   positionStartDate?: string
   positionEndDate?: string
+  home_lc?: {
+    id: string
+    name: string
+  }
   allPositions: Array<{
     committee_department: { name: string }
     start_date: string
@@ -49,6 +53,21 @@ export function useAuth() {
     checkAuth()
   }, [])
 
+  const getAccessToken = async (): Promise<string> => {
+    try {
+      const response = await fetch('/api/auth/token')
+      const data = await response.json()
+
+      if (data.access_token) {
+        return data.access_token
+      }
+      throw new Error('No access token available')
+    } catch (error) {
+      console.error('Error getting access token:', error)
+      throw error
+    }
+  }
+
   const logout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
@@ -64,6 +83,7 @@ export function useAuth() {
     user,
     loading,
     isAuthenticated: !!user,
+    getAccessToken,
     logout,
   }
 }

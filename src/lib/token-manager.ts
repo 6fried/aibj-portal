@@ -70,7 +70,7 @@ export class TokenManager {
           window.location.href = '/auth/error?error=session_expired'
         }
       }
-    }, 30 * 1000) // 30 secondes
+    }, 120 * 1000) // 2 minutes
 
     // Nettoyer à la fermeture de la page
     window.addEventListener('beforeunload', () => {

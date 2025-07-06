@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 'use client'
 
 import { Header } from '@/components/layout/header'
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/use-auth'
 import { AiesecLogo } from '@/components/ui/aiesec-logo'
 import Link from 'next/link'
-import { BarChart3, Users, Calendar, BookOpen, TrendingUp, Activity } from 'lucide-react'
+import { BarChart3, Users, Calendar, BookOpen, TrendingUp, Activity, FileText, TrendingDown } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
@@ -27,7 +26,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Applications disponibles
   const applications = [
     {
       id: 'performance',
@@ -40,6 +38,16 @@ export default function DashboardPage() {
       available: true,
     },
     {
+      id: 'reports',
+      title: 'Reports & Analytics',
+      description: 'Rapports détaillés et analyses de progression',
+      icon: FileText,
+      href: '/apps/reports',
+      color: 'text-aiesec-purple',
+      bgColor: 'bg-purple-50',
+      available: true,
+    },
+    {
       id: 'members',
       title: 'Member Management',
       description: 'Gestion des membres et de l\'équipe',
@@ -47,7 +55,7 @@ export default function DashboardPage() {
       href: '/dashboard/members',
       color: 'text-aiesec-green',
       bgColor: 'bg-green-50',
-      available: false, // À développer plus tard
+      available: false,
     },
     {
       id: 'events',
@@ -57,7 +65,7 @@ export default function DashboardPage() {
       href: '/dashboard/events',
       color: 'text-aiesec-orange',
       bgColor: 'bg-orange-50',
-      available: false, // À développer plus tard
+      available: false,
     },
     {
       id: 'learning',
@@ -67,7 +75,7 @@ export default function DashboardPage() {
       href: '/dashboard/learning',
       color: 'text-aiesec-purple',
       bgColor: 'bg-purple-50',
-      available: false, // À développer plus tard
+      available: false,
     },
     {
       id: 'finance',
@@ -77,7 +85,7 @@ export default function DashboardPage() {
       href: '/dashboard/finance',
       color: 'text-aiesec-teal',
       bgColor: 'bg-teal-50',
-      available: false, // À développer plus tard
+      available: false,
     },
     {
       id: 'operations',
@@ -87,7 +95,7 @@ export default function DashboardPage() {
       href: '/dashboard/operations',
       color: 'text-aiesec-yellow',
       bgColor: 'bg-yellow-50',
-      available: false, // À développer plus tard
+      available: false,
     },
   ]
 
