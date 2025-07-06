@@ -1,3 +1,4 @@
+// src/app/dashboard/page.tsx
 'use client'
 
 import { Header } from '@/components/layout/header'
@@ -5,6 +6,8 @@ import { Footer } from '@/components/layout/footer'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/hooks/use-auth'
 import { AiesecLogo } from '@/components/ui/aiesec-logo'
+import Link from 'next/link'
+import { BarChart3, Users, Calendar, BookOpen, TrendingUp, Activity } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
@@ -24,6 +27,70 @@ export default function DashboardPage() {
     )
   }
 
+  // Applications disponibles
+  const applications = [
+    {
+      id: 'performance',
+      title: 'Performance Analytics',
+      description: 'Suivi des performances d\'échanges entrants et sortants',
+      icon: BarChart3,
+      href: '/dashboard/performance',
+      color: 'text-aiesec-blue',
+      bgColor: 'bg-blue-50',
+      available: true,
+    },
+    {
+      id: 'members',
+      title: 'Member Management',
+      description: 'Gestion des membres et de l\'équipe',
+      icon: Users,
+      href: '/dashboard/members',
+      color: 'text-aiesec-green',
+      bgColor: 'bg-green-50',
+      available: false, // À développer plus tard
+    },
+    {
+      id: 'events',
+      title: 'Event Management',
+      description: 'Organisation et suivi des événements',
+      icon: Calendar,
+      href: '/dashboard/events',
+      color: 'text-aiesec-orange',
+      bgColor: 'bg-orange-50',
+      available: false, // À développer plus tard
+    },
+    {
+      id: 'learning',
+      title: 'Learning Hub',
+      description: 'Plateforme d\'apprentissage et formations',
+      icon: BookOpen,
+      href: '/dashboard/learning',
+      color: 'text-aiesec-purple',
+      bgColor: 'bg-purple-50',
+      available: false, // À développer plus tard
+    },
+    {
+      id: 'finance',
+      title: 'Finance Tracker',
+      description: 'Suivi financier et budgets',
+      icon: TrendingUp,
+      href: '/dashboard/finance',
+      color: 'text-aiesec-teal',
+      bgColor: 'bg-teal-50',
+      available: false, // À développer plus tard
+    },
+    {
+      id: 'operations',
+      title: 'Operations Dashboard',
+      description: 'Tableaux de bord opérationnels',
+      icon: Activity,
+      href: '/dashboard/operations',
+      color: 'text-aiesec-yellow',
+      bgColor: 'bg-yellow-50',
+      available: false, // À développer plus tard
+    },
+  ]
+
   return (
     <main className="min-h-screen flex flex-col">
       <Header />
@@ -38,52 +105,78 @@ export default function DashboardPage() {
             {user?.department && ` - ${user.department}`}
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-aiesec-blue">My Applications</CardTitle>
-              <CardDescription>
-                Track your exchange applications
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-aiesec-dark">3</div>
-              <p className="text-sm text-aiesec-dark/70">Active applications</p>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-aiesec-green">Events</CardTitle>
-              <CardDescription>
-                Upcoming AIESEC events
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-aiesec-dark">5</div>
-              <p className="text-sm text-aiesec-dark/70">Events this month</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-aiesec-orange">Learning</CardTitle>
-              <CardDescription>
-                Your learning progress
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-aiesec-dark">78%</div>
-              <p className="text-sm text-aiesec-dark/70">Completion rate</p>
-            </CardContent>
-          </Card>
+        {/* Section Applications */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-aiesec-dark mb-4">
+            Applications disponibles
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {applications.map((app) => {
+              const IconComponent = app.icon
+              
+              if (app.available) {
+                return (
+                  <Link key={app.id} href={app.href}>
+                    <Card className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 border-2 hover:border-aiesec-blue">
+                      <CardHeader>
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${app.bgColor}`}>
+                            <IconComponent className={`w-6 h-6 ${app.color}`} />
+                          </div>
+                          <div>
+                            <CardTitle className="text-aiesec-dark">{app.title}</CardTitle>
+                          </div>
+                        </div>
+                        <CardDescription>{app.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-aiesec-blue">
+                            Disponible
+                          </span>
+                          <div className="w-2 h-2 bg-aiesec-green rounded-full"></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              } else {
+                return (
+                  <Card key={app.id} className="opacity-60 cursor-not-allowed">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg bg-gray-100`}>
+                          <IconComponent className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-gray-500">{app.title}</CardTitle>
+                        </div>
+                      </div>
+                      <CardDescription className="text-gray-400">{app.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-400">
+                          Bientôt disponible
+                        </span>
+                        <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              }
+            })}
+          </div>
         </div>
+
+        {/* Section Activités récentes */}
         <div className="mt-8">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Activities</CardTitle>
+              <CardTitle>Activités récentes</CardTitle>
               <CardDescription>
-                Your latest interactions with AIESEC
+                Vos dernières interactions avec AIESEC
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -91,22 +184,22 @@ export default function DashboardPage() {
                 <div className="flex items-center space-x-4">
                   <div className="w-2 h-2 bg-aiesec-blue rounded-full"></div>
                   <div>
-                    <p className="text-sm font-medium">Applied for Global Volunteer in Brazil</p>
-                    <p className="text-xs text-aiesec-dark/70">2 days ago</p>
+                    <p className="text-sm font-medium">Consultation Performance Analytics</p>
+                    <p className="text-xs text-aiesec-dark/70">Il y a quelques minutes</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="w-2 h-2 bg-aiesec-green rounded-full"></div>
                   <div>
-                    <p className="text-sm font-medium">Attended Leadership Workshop</p>
-                    <p className="text-xs text-aiesec-dark/70">1 week ago</p>
+                    <p className="text-sm font-medium">Connexion au portail AIESEC in Benin</p>
+                    <p className="text-xs text-aiesec-dark/70">Aujourd'hui</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="w-2 h-2 bg-aiesec-orange rounded-full"></div>
                   <div>
-                    <p className="text-sm font-medium">Completed AIESEC Way training</p>
-                    <p className="text-xs text-aiesec-dark/70">2 weeks ago</p>
+                    <p className="text-sm font-medium">Mise à jour du profil utilisateur</p>
+                    <p className="text-xs text-aiesec-dark/70">Il y a 2 jours</p>
                   </div>
                 </div>
               </div>

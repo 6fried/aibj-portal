@@ -7,11 +7,16 @@
   --color-aiesec-gray: #CACCD1;
   --color-aiesec-dark: #52565E;
   --color-aiesec-yellow: #FFC845;
-  --color-aiesec-orange: #F48924;
-  --color-aiesec-red: #F85A40;
+  --color-aiesec-orange: #F48924; /* GTe */
+  --color-aiesec-red: #F85A40; /* GV */
   --color-aiesec-purple: #7552CC;
   --color-aiesec-green: #00C16E;
-  --color-aiesec-teal: #0CB9C1;
+  --color-aiesec-teal: #0CB9C1; /* GTa */
+
+  /* Couleurs des programmes */
+  --color-gv: #F85A40; /* Global Volunteer */
+  --color-gta: #0CB9C1; /* Global Talent */
+  --color-gte: #F48924; /* Global Teacher */
 
   /* Couleurs système avec AIESEC Blue comme primaire */
   --color-primary: var(--color-aiesec-blue);
@@ -57,4 +62,12 @@
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Classes utilitaires pour les couleurs de programmes */
+  .text-gv { color: var(--color-gv); }
+  .text-gta { color: var(--color-gta); }
+  .text-gte { color: var(--color-gte); }
+  .bg-gv { background-color: var(--color-gv); }
+  .bg-gta { background-color: var(--color-gta); }
+  .bg-gte { background-color: var(--color-gte); }
 }

@@ -1,3 +1,4 @@
+// src/components/layout/header.tsx
 'use client'
 
 import Link from 'next/link'
@@ -34,6 +35,9 @@ export function Header() {
               <>
                 <Button variant="ghost" asChild>
                   <Link href="/dashboard">Dashboard</Link>
+                </Button>
+                <Button variant="ghost" asChild>
+                  <Link href="/dashboard/performance">Performance</Link>
                 </Button>
                 <Button variant="ghost" asChild>
                   <Link href="/members">Members</Link>
