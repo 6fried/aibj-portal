@@ -1,174 +1,155 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
-import { PerformanceList } from '@/components/performance/PerformanceList'
-import { PerformanceFilters } from '@/components/performance/PerformanceFilters'
-import { ProcessedPerformanceData } from '@/lib/analytics/aiesec-analytics'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, RefreshCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-
-// Cache simple en mémoire
-const dataCache = new Map<string, ProcessedPerformanceData>()
+import { PerformanceFilters } from "@/components/performance/PerformanceFilters"
+import { PerformanceCard } from "@/components/performance/PerformanceCard"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuth } from "@/hooks/use-auth"
+import { ProcessedPerformanceData } from "@/lib/analytics/aiesec-analytics"
+import { useEffect, useState, useCallback } from "react"
+import { entityList } from '@/lib/data/entities'
+import { Loader2, LayoutDashboard } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export default function PerformancePage() {
-  const [data, setData] = useState<ProcessedPerformanceData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [selectedEntity, setSelectedEntity] = useState('aiesec_benin')
+  const [selectedEntity, setSelectedEntity] = useState('')
+  const [data, setData] = useState<ProcessedPerformanceData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [cache, setCache] = useState<Record<string, ProcessedPerformanceData>>({})
 
-  const getCacheKey = (entity: string, year: number) => `${entity}-${year}`
+  const isMcvp = user?.role === 'mcvp'
 
-  const fetchData = useCallback(async () => {
-    const cacheKey = getCacheKey(selectedEntity, selectedYear)
-    
-    // Vérifier le cache en premier
-    if (dataCache.has(cacheKey)) {
-      console.log('Données trouvées dans le cache')
-      setData(dataCache.get(cacheKey)!)
+  useEffect(() => {
+    if (user?.entityId) {
+      if (isMcvp) {
+        setSelectedEntity('2110') // Default to MC
+      } else {
+        setSelectedEntity(user.entityId)
+      }
+    }
+  }, [user, isMcvp])
+
+  const fetchData = useCallback(async (forceRefresh = false) => {
+    if (!selectedEntity) {
+      setLoading(false)
+      if (user?.role === 'mcvp') {
+        setError("Veuillez sélectionner une entité.")
+      }
+      return
+    }
+
+    const cacheKey = `${selectedEntity}-${selectedYear}`
+    if (cache[cacheKey] && !forceRefresh) {
+      setData(cache[cacheKey])
+      setLoading(false)
+      setError(null)
       return
     }
 
     setLoading(true)
     setError(null)
-    
+
     try {
-      console.log(`Fetching data for ${selectedEntity}, year ${selectedYear}`)
       const response = await fetch(
         `/api/performance?entityId=${selectedEntity}&year=${selectedYear}`
       )
-      
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.details || errorData.error || 'Erreur lors du chargement des données')
+        throw new Error(errorData.error || `Erreur de chargement (${response.status})`)
       }
-      
-      const result = await response.json()
-      
-      // Mettre en cache les données
-      dataCache.set(cacheKey, result)
+      const result: ProcessedPerformanceData = await response.json()
+      setCache(prev => ({ ...prev, [cacheKey]: result }))
       setData(result)
-    } catch (err) {
-      console.error('Error fetching performance data:', err)
-      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } catch (e) {
+      if (e instanceof Error) {
+        setError(e.message || "Une erreur inattendue est survenue.")
+      } else {
+        setError("Une erreur inattendue est survenue.")
+      }
+      setData(null)
     } finally {
       setLoading(false)
     }
-  }, [selectedEntity, selectedYear])
-
-  const handleRefresh = () => {
-    // Vider le cache pour cette combinaison entity/year
-    const cacheKey = getCacheKey(selectedEntity, selectedYear)
-    dataCache.delete(cacheKey)
-    fetchData()
-  }
+  }, [selectedEntity, selectedYear, cache, user?.role])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    if (selectedEntity) {
+      fetchData()
+    }
+  }, [selectedEntity, selectedYear, fetchData])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-[#037EF3]" />
-        <span className="ml-2 text-lg">Chargement des données...</span>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-red-600">Erreur</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <div className="flex gap-2">
-              <Button 
-                onClick={fetchData}
-                className="bg-[#037EF3] text-white hover:bg-blue-600"
-              >
-                Réessayer
-              </Button>
-              <Button 
-                onClick={() => window.location.reload()}
-                variant="outline"
-              >
-                Recharger la page
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  const programmes: Array<'total' | 'gv' | 'gta' | 'gte'> = ['total', 'gv', 'gta', 'gte']
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[#037EF3] mb-2">
-            Performance Analytics
-          </h1>
-          <p className="text-gray-600">
-            {"Suivi des performances d'échanges entrants et sortants"}
-          </p>
+    <div className="flex h-screen flex-col bg-gray-50">
+      <main className="flex flex-1 flex-col space-y-4 p-4 pt-6 md:p-8">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">Performance</h2>
+          <div className="flex items-center space-x-2">
+            <Link href="/dashboard">
+              <Button variant="outline">
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
+            </Link>
+          </div>
         </div>
-        <Button
-          onClick={handleRefresh}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Actualiser
-        </Button>
-      </div>
 
-      <PerformanceFilters
-        selectedYear={selectedYear}
-        selectedEntity={selectedEntity}
-        onYearChange={setSelectedYear}
-        onEntityChange={setSelectedEntity}
-      />
+        {user && user.role === "mcvp" && (
+          <PerformanceFilters 
+            selectedYear={selectedYear}
+            selectedEntity={selectedEntity}
+            onYearChange={setSelectedYear}
+            onEntityChange={setSelectedEntity}
+            entityList={entityList}
+          />
+        )}
 
-      {data && (
-      <Tabs defaultValue="ogx" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="ogx" className="data-[state=active]:bg-[#037EF3] data-[state=active]:text-white">
-              📤 Outgoing Exchange (OGX)
-          </TabsTrigger>
-          <TabsTrigger value="icx" className="data-[state=active]:bg-[#037EF3] data-[state=active]:text-white">
-              📥 Incoming Exchange (ICX)
-          </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="ogx" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <PerformanceList data={data} department="ogx" programme="total" />
-              <div className="space-y-6">
-              <PerformanceList data={data} department="ogx" programme="gv" />
-              <PerformanceList data={data} department="ogx" programme="gta" />
-              <PerformanceList data={data} department="ogx" programme="gte" />
+        <div className="flex flex-1 flex-col items-center justify-center">
+          {loading ? (
+            <Loader2 className="h-16 w-16 animate-spin" />
+          ) : error ? (
+            <Alert variant="destructive" className="max-w-lg flex flex-col items-center text-center p-6">
+              <AlertTitle className="mb-2">Erreur de chargement</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+              <div className="mt-4">
+                <Button onClick={() => fetchData(true)}>Réessayer</Button>
               </div>
-          </div>
-          </TabsContent>
-          
-          <TabsContent value="icx" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <PerformanceList data={data} department="icx" programme="total" />
-              <div className="space-y-6">
-              <PerformanceList data={data} department="icx" programme="gv" />
-              <PerformanceList data={data} department="icx" programme="gta" />
-              <PerformanceList data={data} department="icx" programme="gte" />
-              </div>
-          </div>
-          </TabsContent>
-      </Tabs>
-      )}
+            </Alert>
+          ) : data ? (
+            <Tabs defaultValue="ogx" className="w-full max-w-6xl">
+              <TabsList className="grid w-full grid-cols-2 bg-gray-200/80 rounded-lg">
+                <TabsTrigger value="ogx">OGX</TabsTrigger>
+                <TabsTrigger value="icx">ICX</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="ogx" className="pt-6">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                  {programmes.map(prog => (
+                    <PerformanceCard key={`ogx-${prog}`} data={data} department="ogx" programme={prog} />
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="icx" className="pt-6">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                   {programmes.map(prog => (
+                    <PerformanceCard key={`icx-${prog}`} data={data} department="icx" programme={prog} />
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="text-center text-gray-500">
+              <p>Aucune donnée à afficher pour les filtres sélectionnés.</p>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   )
 }

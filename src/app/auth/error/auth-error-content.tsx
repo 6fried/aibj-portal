@@ -2,9 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AiesecLogo } from '@/components/ui/aiesec-logo'
 import Link from 'next/link'
 
 const errorMessages = {
@@ -56,58 +54,46 @@ export default function AuthErrorContent() {
   const searchParams = useSearchParams()
   const errorType = searchParams.get('error') || 'default'
   const errorDetail = searchParams.get('detail')
-  
+
   const error = errorMessages[errorType as keyof typeof errorMessages] || errorMessages.default
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-aiesec-blue to-aiesec-teal flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <AiesecLogo size="xl" />
+    <div className="w-full lg:grid lg:min-h-[100vh] lg:grid-cols-2 xl:min-h-[100vh]">
+      <div className="flex items-center justify-center py-12">
+        <div className="mx-auto grid w-[380px] gap-6 text-center">
+          <div className="grid gap-4">
+            <div className="text-5xl">{error.icon}</div>
+            <h1 className="text-3xl font-bold">{error.title}</h1>
+            <p className="text-balance text-muted-foreground">
+              {error.description}
+            </p>
           </div>
-          <div className="text-4xl mb-2">{error.icon}</div>
-          <CardTitle className="text-2xl font-bold text-aiesec-dark">
-            {error.title}
-          </CardTitle>
-          <CardDescription>
-            {error.description}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
           {errorDetail && (
-            <Alert>
-              <AlertDescription className="text-sm">
+            <Alert variant="destructive">
+              <AlertDescription className="text-sm text-left">
                 <strong>Details:</strong> {errorDetail}
               </AlertDescription>
             </Alert>
           )}
-          
-          <div className="flex gap-2">
-            <Button
-              asChild
-              className="flex-1 bg-aiesec-blue hover:bg-aiesec-blue/90"
-            >
-              <Link href="/login">
-                {error.action}
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              asChild
-              className="flex-1"
-            >
-              <Link href="/">
-                Home
-              </Link>
-            </Button>
+          <Button asChild className="w-full" size="lg">
+            <Link href="/login">{error.action}</Link>
+          </Button>
+          <div className="mt-4 text-center text-sm">
+            If the problem persists, please contact support.
           </div>
-          
-          <div className="text-center text-sm text-aiesec-dark/60">
-            Need help? Contact AIESEC in Benin support
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+      <div className="hidden bg-muted lg:block">
+        <div
+          className="h-full w-full object-cover dark:brightness-[0.8]"
+          style={{
+            backgroundImage:
+              'url(https://aiesec.org/wp-content/uploads/2022/10/AIESEC-Volunteers-in-a-project-in-Brazil-1024x683.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+      </div>
     </div>
   )
 }

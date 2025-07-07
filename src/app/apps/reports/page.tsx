@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/hooks/use-auth'
 import { AiesecAnalyticsService } from '@/lib/analytics/aiesec-analytics'
 import { StatusProgressionTable } from '@/components/reports/status-progression-table'
-import { RefreshCw, FileText } from 'lucide-react'
+import { RefreshCw, FileText, LayoutDashboard, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface StatusProgressionData {
   month: string
@@ -32,15 +35,38 @@ interface Mandate {
   semesters: Semester[];
 }
 
+const entityList = [
+  { id: "2422", name: "." },
+  { id: "175", name: "Abomey-Calavi" },
+  { id: "6701", name: "AIESEC in Benin " },
+  { id: "3445", name: "Cotonou" },
+  { id: "458", name: "ENEAM" },
+  { id: "2110", name: "MC Benin" },
+  { id: "2482", name: "MC Benin 2" },
+  { id: "2039", name: "Porto-Novo" },
+  { id: "2055", name: "UATM Gasa Formation" },
+]
+
 export default function ReportsPage() {
   const { user } = useAuth()
-  const [s1OgxData, setS1OgxData] = useState<StatusProgressionData[]>([])
-  const [s1IcxData, setS1IcxData] = useState<StatusProgressionData[]>([])
-  const [s2OgxData, setS2OgxData] = useState<StatusProgressionData[]>([])
-  const [s2IcxData, setS2IcxData] = useState<StatusProgressionData[]>([])
+  const [reportData, setReportData] = useState<Record<string, StatusProgressionData[]>>({})
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [selectedMandate, setSelectedMandate] = useState<string>('')
+  const [selectedEntity, setSelectedEntity] = useState<string>('')
   const [currentMandate, setCurrentMandate] = useState<Mandate | null>(null)
+
+  const isMcvp = user?.role === 'mcvp'
+
+  useEffect(() => {
+    if (user?.entityId) {
+      if (isMcvp) {
+        setSelectedEntity('2110') // Default to MC
+      } else {
+        setSelectedEntity(user.entityId)
+      }
+    }
+  }, [user, isMcvp])
 
   const currentYear = new Date().getFullYear()
   const availableMandates: Mandate[] = []
@@ -49,157 +75,153 @@ export default function ReportsPage() {
   }
 
   const generateReport = async () => {
-    if (!selectedMandate || !user?.entityId) {
-      alert('Veuillez sélectionner un mandat')
+    if (!selectedMandate || !selectedEntity) {
+      setError('Veuillez sélectionner un mandat et une entité.')
       return
     }
 
     setLoading(true)
-    setS1OgxData([]); setS1IcxData([]); setS2OgxData([]); setS2IcxData([]);
+    setError(null)
+    setReportData({})
 
     const mandate = availableMandates.find(m => m.id === selectedMandate)
-    if (!mandate) return
+    if (!mandate) {
+      setError('Mandat sélectionné non valide.')
+      setLoading(false)
+      return
+    }
     setCurrentMandate(mandate)
 
     try {
       const analyticsService = new AiesecAnalyticsService()
-
       const [s1Data, s2Data] = await Promise.all([
-        analyticsService.getStatusProgressionData(mandate.semesters[0].startDate, mandate.semesters[0].endDate, parseInt(user.entityId)),
-        analyticsService.getStatusProgressionData(mandate.semesters[1].startDate, mandate.semesters[1].endDate, parseInt(user.entityId))
+        analyticsService.getStatusProgressionData(mandate.semesters[0].startDate, mandate.semesters[0].endDate, parseInt(selectedEntity)),
+        analyticsService.getStatusProgressionData(mandate.semesters[1].startDate, mandate.semesters[1].endDate, parseInt(selectedEntity)),
       ])
-      
-      setS1OgxData(s1Data.ogx)
-      setS1IcxData(s1Data.icx)
-      setS2OgxData(s2Data.ogx)
-      setS2IcxData(s2Data.icx)
-
-    } catch (error) {
-      console.error('Error generating report:', error)
-      alert('Erreur lors de la génération du rapport')
+      setReportData({
+        s1Ogx: s1Data.ogx,
+        s1Icx: s1Data.icx,
+        s2Ogx: s2Data.ogx,
+        s2Icx: s2Data.icx,
+      })
+    } catch (e) {
+      if (e instanceof Error) {
+        setError(e.message || 'Une erreur est survenue lors de la génération du rapport.')
+      } else {
+        setError('Une erreur est survenue lors de la génération du rapport.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
+  const hasData = Object.values(reportData).some(d => d.length > 0)
+
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-aiesec-dark mb-2 flex items-center gap-2">
-          <FileText className="h-8 w-8 text-aiesec-blue" />
-          Rapports de Performance par Mandat
-        </h1>
-        <p className="text-aiesec-dark/70">
-          Analyses de progression pour un mandat LC complet (Février - Janvier)
-        </p>
-        {user && (
-          <p className="text-sm text-aiesec-dark/60 mt-1">
-            Office : {user.entityName}
-          </p>
-        )}
-      </div>
+    <main className="flex h-screen flex-col bg-gray-50">
+      <div className="flex flex-1 flex-col space-y-4 p-4 pt-6 md:p-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight">Rapports de Performance</h1>
+          <Link href="/dashboard" passHref>
+            <Button variant="outline">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
+        </div>
 
-      {/* Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Sélection du Mandat</CardTitle>
-          <CardDescription>
-            {"Générez les rapports de performance OGX et ICX pour les deux semestres d'un mandat."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-sm font-medium text-aiesec-dark mb-2 block">
-                Mandat LC
-              </label>
-              <Select value={selectedMandate} onValueChange={setSelectedMandate}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un mandat" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableMandates.map((mandate) => (
-                    <SelectItem key={mandate.id} value={mandate.id}>
-                      {mandate.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <Card>
+          <CardHeader>
+            <CardTitle>Configuration du Rapport</CardTitle>
+            <CardDescription>Sélectionnez un mandat pour analyser la progression des statuts.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 md:flex-row md:items-end">
+            <div className="flex flex-1 flex-col gap-4 md:flex-row">
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-2 block">Mandat LC</label>
+                <Select value={selectedMandate} onValueChange={setSelectedMandate}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un mandat" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableMandates.map(mandate => (
+                      <SelectItem key={mandate.id} value={mandate.id}>{mandate.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {isMcvp && (
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-2 block">Entité</label>
+                  <Select value={selectedEntity} onValueChange={setSelectedEntity}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une entité" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {entityList.map(entity => (
+                        <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
+            <Button onClick={generateReport} disabled={loading || !selectedMandate || !selectedEntity} className="w-full self-end md:w-auto">
+              {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} 
+              <span className="ml-2">{loading ? 'Génération...' : 'Générer le Rapport'}</span>
+            </Button>
+          </CardContent>
+        </Card>
 
-            <div className="flex items-end">
-              <Button 
-                onClick={generateReport} 
-                disabled={loading || !selectedMandate}
-                className="w-full"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Génération...
-                  </>
-                ) : (
-                  'Générer le rapport'
-                )}
-              </Button>
+        <div className="flex flex-1 flex-col items-center justify-center rounded-lg border bg-white p-6 shadow-sm">
+          {loading ? (
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+          ) : error ? (
+             <Alert variant="destructive" className="max-w-lg">
+                <AlertTitle>Erreur</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+          ) : hasData && currentMandate ? (
+            <Tabs defaultValue="s1" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="s1">{currentMandate.semesters[0].label}</TabsTrigger>
+                <TabsTrigger value="s2">{currentMandate.semesters[1].label}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="s1" className="mt-4">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <ReportCard title="Outgoing Exchange (OGX)" data={reportData.s1Ogx} />
+                  <ReportCard title="Incoming Exchange (ICX)" data={reportData.s1Icx} />
+                </div>
+              </TabsContent>
+              <TabsContent value="s2" className="mt-4">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <ReportCard title="Outgoing Exchange (OGX)" data={reportData.s2Ogx} />
+                  <ReportCard title="Incoming Exchange (ICX)" data={reportData.s2Icx} />
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="text-center">
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Prêt à analyser</h3>
+              <p className="mt-1 text-sm text-gray-500">Sélectionnez un mandat et générez un rapport.</p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tableaux des résultats */}
-      {currentMandate && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Semestre 1 */}
-          {s1OgxData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>OGX - {currentMandate.semesters[0].label}</CardTitle>
-                <CardDescription>Programmes sortants (Outgoing Exchange)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StatusProgressionTable data={s1OgxData} />
-              </CardContent>
-            </Card>
-          )}
-          {s1IcxData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>ICX - {currentMandate.semesters[0].label}</CardTitle>
-                <CardDescription>Programmes entrants (Incoming Exchange)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StatusProgressionTable data={s1IcxData} />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Semestre 2 */}
-          {s2OgxData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>OGX - {currentMandate.semesters[1].label}</CardTitle>
-                <CardDescription>Programmes sortants (Outgoing Exchange)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StatusProgressionTable data={s2OgxData} />
-              </CardContent>
-            </Card>
-          )}
-          {s2IcxData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>ICX - {currentMandate.semesters[1].label}</CardTitle>
-                <CardDescription>Programmes entrants (Incoming Exchange)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StatusProgressionTable data={s2IcxData} />
-              </CardContent>
-            </Card>
           )}
         </div>
-      )}
-    </div>
+      </div>
+    </main>
+  )
+}
+
+function ReportCard({ title, data }: { title: string, data: StatusProgressionData[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <StatusProgressionTable data={data} />
+      </CardContent>
+    </Card>
   )
 }

@@ -9,6 +9,7 @@ interface User {
   phone?: string
   entityName: string
   entityId: string
+  entitySlug: string
   role: string
   department?: string
   positionStartDate?: string

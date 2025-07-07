@@ -9,6 +9,7 @@ interface PerformanceFiltersProps {
   selectedEntity: string
   onYearChange: (year: number) => void
   onEntityChange: (entity: string) => void
+  entityList: { id: string; name: string }[]
   userRole?: string
   userLC?: string
 }
@@ -18,30 +19,22 @@ export function PerformanceFilters({
   selectedEntity,
   onYearChange, 
   onEntityChange,
+  entityList,
   userRole,
   userLC 
 }: PerformanceFiltersProps) {
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
   
-  // Entités du Bénin - tu peux ajuster selon tes LC
-  const entities = [
-    { id: 'aiesec_benin', name: 'AIESEC in Benin', level: 'mc' },
-    { id: 'lc_cotonou', name: 'LC Cotonou', level: 'lc' },
-    { id: 'lc_parakou', name: 'LC Parakou', level: 'lc' },
-    { id: 'lc_abomey_calavi', name: 'LC Abomey-Calavi', level: 'lc' },
-    // Ajoute d'autres LC selon tes besoins
-  ]
-
   // Filtrer les entités selon le rôle
-  const availableEntities = entities.filter(entity => {
+  const availableEntities = entityList.filter(entity => {
     if (userRole?.includes('MCP') || userRole?.includes('MCVP')) {
       return true // Accès à toutes les entités
     }
     if (userRole?.includes('LCP') || userRole?.includes('LCVP')) {
-      return entity.level === 'lc' && entity.name.includes(userLC || '')
+      return entity.name.includes(userLC || '')
     }
-    return entity.level === 'lc' // Par défaut, accès LC seulement
+    return true // Par défaut, accès à toutes les entités
   })
 
   return (

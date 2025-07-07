@@ -20,19 +20,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'EntityId requis' }, { status: 400 })
     }
 
-    // Mapping des entités string vers office ID numériques
-    // IMPORTANT: Remplace ces ID par les vrais office ID de tes LC au Bénin
-    const entityMapping: Record<string, number> = {
-      'aiesec_benin': 175, // ID de AIESEC in Benin (exemple de ton URL)
-      'lc_cotonou': 175,  // Remplace par le vrai ID de LC Cotonou 
-      'lc_parakou': 175,  // Remplace par le vrai ID de LC Parakou
-      'lc_abomey_calavi': 175, // Remplace par le vrai ID de LC Abomey-Calavi
-      // Ajoute d'autres selon tes LC
-    }
-
-    const officeId = entityMapping[entityId]
-    if (!officeId) {
-      return NextResponse.json({ error: 'Entité non trouvée' }, { status: 404 })
+    const officeId = parseInt(entityId, 10)
+    if (isNaN(officeId)) {
+      return NextResponse.json({ error: 'EntityId doit être un nombre' }, { status: 400 })
     }
 
     console.log(`Fetching analytics for office ID: ${officeId}, year: ${year || 'current'}`)

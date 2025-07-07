@@ -12,6 +12,14 @@ export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get('aiesec_access_token')
   const isAuthenticated = !!accessToken
 
+  // Redirection depuis la racine
+  if (pathname === '/') {
+    if (isAuthenticated) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
   // Si on est sur une route protégée sans être authentifié
   if (protectedRoutes.some(route => pathname.startsWith(route)) && !isAuthenticated) {
     return NextResponse.redirect(new URL('/login', request.url))
@@ -26,5 +34,14 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/members/:path*', '/events/:path*', '/profile/:path*', '/apps/:path*']
+  // Le matcher inclut maintenant la racine, le login et les routes protégées
+  matcher: [
+    '/',
+    '/login',
+    '/dashboard/:path*',
+    '/members/:path*',
+    '/events/:path*',
+    '/profile/:path*',
+    '/apps/:path*',
+  ],
 }

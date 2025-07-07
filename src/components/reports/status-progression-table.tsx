@@ -40,7 +40,7 @@ export function StatusProgressionTable({ data }: StatusProgressionTableProps) {
   return (
     <>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="border-collapse">
             {/* Header */}
             <thead>
               <tr className="border-b border-gray-200">

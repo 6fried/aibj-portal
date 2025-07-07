@@ -13,6 +13,16 @@ export async function GET() {
     const user = JSON.parse(userCookie.value)
     
     // Transformer les données pour le frontend
+    const entityId = user.home_lc?.id;
+    const entityMapping: Record<number, string> = {
+      175: 'aiesec_benin',       // AIESEC in Benin
+      // IMPORTANT: Remplace ces ID par les vrais office ID de tes LC
+      1649: 'lc_cotonou',         // Exemple: LC Cotonou
+      2134: 'lc_parakou',         // Exemple: LC Parakou
+      2135: 'lc_abomey_calavi', // Exemple: LC Abomey-Calavi
+    };
+    const entitySlug = entityId ? entityMapping[entityId] || `unknown_entity_${entityId}` : 'unknown';
+
     const formattedUser = {
       id: user.id,
       name: user.full_name || `${user.first_name} ${user.last_name}`,
@@ -20,7 +30,8 @@ export async function GET() {
       image: user.profile_photo,
       phone: user.contact_detail?.phone,
       entityName: user.home_lc?.name || 'AIESEC Member',
-      entityId: user.home_lc?.id,
+      entityId: entityId,
+      entitySlug: entitySlug,
       // Prendre le premier poste actuel comme rôle principal
       role: user.current_positions?.[0]?.role?.name || 'Member',
       department: user.current_positions?.[0]?.committee_department?.name,
