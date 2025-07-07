@@ -1,4 +1,3 @@
-// src/app/dashboard/performance/page.tsx
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
@@ -116,7 +115,7 @@ export default function PerformancePage() {
             Performance Analytics
           </h1>
           <p className="text-gray-600">
-            Suivi des performances d'échanges entrants et sortants
+            {"Suivi des performances d'échanges entrants et sortants"}
           </p>
         </div>
         <Button

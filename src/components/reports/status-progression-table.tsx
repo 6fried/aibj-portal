@@ -1,7 +1,5 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-
 interface StatusProgressionData {
   month: string
   apl: number

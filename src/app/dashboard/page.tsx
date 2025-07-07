@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/use-auth'
 import { AiesecLogo } from '@/components/ui/aiesec-logo'
 import Link from 'next/link'
-import { BarChart3, Users, Calendar, BookOpen, TrendingUp, Activity, FileText, TrendingDown } from 'lucide-react'
+import { BarChart3, Users, Calendar, BookOpen, TrendingUp, Activity, FileText } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
@@ -32,7 +32,7 @@ export default function DashboardPage() {
       title: 'Performance Analytics',
       description: 'Suivi des performances d\'échanges entrants et sortants',
       icon: BarChart3,
-      href: '/dashboard/performance',
+      href: '/apps/performance',
       color: 'text-aiesec-blue',
       bgColor: 'bg-blue-50',
       available: true,
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                   <div className="w-2 h-2 bg-aiesec-green rounded-full"></div>
                   <div>
                     <p className="text-sm font-medium">Connexion au portail AIESEC in Benin</p>
-                    <p className="text-xs text-aiesec-dark/70">Aujourd'hui</p>
+                    <p className="text-xs text-aiesec-dark/70">{`Aujourd'hui`}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">

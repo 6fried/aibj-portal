@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -19,55 +19,61 @@ interface StatusProgressionData {
   co: number
 }
 
-interface SemesterPeriod {
-  id: string
-  label: string
-  startDate: string
-  endDate: string
+interface Semester {
+  id: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface Mandate {
+  id: string;
+  label: string;
+  semesters: Semester[];
 }
 
 export default function ReportsPage() {
-  const { user, getAccessToken } = useAuth()
-  const [ogxData, setOgxData] = useState<StatusProgressionData[]>([])
-  const [icxData, setIcxData] = useState<StatusProgressionData[]>([])
+  const { user } = useAuth()
+  const [s1OgxData, setS1OgxData] = useState<StatusProgressionData[]>([])
+  const [s1IcxData, setS1IcxData] = useState<StatusProgressionData[]>([])
+  const [s2OgxData, setS2OgxData] = useState<StatusProgressionData[]>([])
+  const [s2IcxData, setS2IcxData] = useState<StatusProgressionData[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedSemester, setSelectedSemester] = useState<string>('')
+  const [selectedMandate, setSelectedMandate] = useState<string>('')
+  const [currentMandate, setCurrentMandate] = useState<Mandate | null>(null)
 
-  // Générer les semestres disponibles
   const currentYear = new Date().getFullYear()
-  const availableSemesters: SemesterPeriod[] = []
-  
-  for (let year = currentYear - 2; year <= currentYear + 1; year++) {
-    availableSemesters.push(
-      ...AiesecAnalyticsService.getSemesterPeriods(year)
-    )
+  const availableMandates: Mandate[] = []
+  for (let year = 2019; year <= currentYear; year++) {
+    availableMandates.push(AiesecAnalyticsService.getMandatePeriods(year))
   }
 
   const generateReport = async () => {
-    if (!selectedSemester || !user?.entityId) {
-      alert('Veuillez sélectionner un semestre')
+    if (!selectedMandate || !user?.entityId) {
+      alert('Veuillez sélectionner un mandat')
       return
     }
 
     setLoading(true)
-    setOgxData([])
-    setIcxData([])
-    
+    setS1OgxData([]); setS1IcxData([]); setS2OgxData([]); setS2IcxData([]);
+
+    const mandate = availableMandates.find(m => m.id === selectedMandate)
+    if (!mandate) return
+    setCurrentMandate(mandate)
+
     try {
-      const token = await getAccessToken()
-      const service = new AiesecAnalyticsService(token)
+      const analyticsService = new AiesecAnalyticsService()
+
+      const [s1Data, s2Data] = await Promise.all([
+        analyticsService.getStatusProgressionData(mandate.semesters[0].startDate, mandate.semesters[0].endDate, parseInt(user.entityId)),
+        analyticsService.getStatusProgressionData(mandate.semesters[1].startDate, mandate.semesters[1].endDate, parseInt(user.entityId))
+      ])
       
-      const semester = availableSemesters.find(s => s.id === selectedSemester)
-      if (!semester) throw new Error('Semestre non trouvé')
-      
-      const { ogx, icx } = await service.getStatusProgressionData(
-        semester.startDate,
-        semester.endDate,
-        parseInt(user.entityId)
-      )
-      
-      setOgxData(ogx)
-      setIcxData(icx)
+      setS1OgxData(s1Data.ogx)
+      setS1IcxData(s1Data.icx)
+      setS2OgxData(s2Data.ogx)
+      setS2IcxData(s2Data.icx)
+
     } catch (error) {
       console.error('Error generating report:', error)
       alert('Erreur lors de la génération du rapport')
@@ -82,10 +88,10 @@ export default function ReportsPage() {
       <div>
         <h1 className="text-3xl font-bold text-aiesec-dark mb-2 flex items-center gap-2">
           <FileText className="h-8 w-8 text-aiesec-blue" />
-          Reports & Analytics
+          Rapports de Performance par Mandat
         </h1>
         <p className="text-aiesec-dark/70">
-          Rapports détaillés et analyses de progression
+          Analyses de progression pour un mandat LC complet (Février - Janvier)
         </p>
         {user && (
           <p className="text-sm text-aiesec-dark/60 mt-1">
@@ -97,25 +103,25 @@ export default function ReportsPage() {
       {/* Configuration */}
       <Card>
         <CardHeader>
-          <CardTitle>Progression des statuts par mois</CardTitle>
+          <CardTitle>Sélection du Mandat</CardTitle>
           <CardDescription>
-            Générer un tableau de progression APL/ACC/APD/RE/FIN/CO par mois pour un semestre donné
+            {"Générez les rapports de performance OGX et ICX pour les deux semestres d'un mandat."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="text-sm font-medium text-aiesec-dark mb-2 block">
-                Semestre
+                Mandat LC
               </label>
-              <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+              <Select value={selectedMandate} onValueChange={setSelectedMandate}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un semestre" />
+                  <SelectValue placeholder="Sélectionner un mandat" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableSemesters.map((semester) => (
-                    <SelectItem key={semester.id} value={semester.id}>
-                      {semester.label}
+                  {availableMandates.map((mandate) => (
+                    <SelectItem key={mandate.id} value={mandate.id}>
+                      {mandate.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -125,7 +131,7 @@ export default function ReportsPage() {
             <div className="flex items-end">
               <Button 
                 onClick={generateReport} 
-                disabled={loading || !selectedSemester}
+                disabled={loading || !selectedMandate}
                 className="w-full"
               >
                 {loading ? (
@@ -143,30 +149,57 @@ export default function ReportsPage() {
       </Card>
 
       {/* Tableaux des résultats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {ogxData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>OGX Progression</CardTitle>
-              <CardDescription>Progression des statuts pour les programmes sortants (Outgoing Exchange)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StatusProgressionTable data={ogxData} />
-            </CardContent>
-          </Card>
-        )}
-        {icxData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>ICX Progression</CardTitle>
-              <CardDescription>Progression des statuts pour les programmes entrants (Incoming Exchange)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <StatusProgressionTable data={icxData} />
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {currentMandate && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Semestre 1 */}
+          {s1OgxData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>OGX - {currentMandate.semesters[0].label}</CardTitle>
+                <CardDescription>Programmes sortants (Outgoing Exchange)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StatusProgressionTable data={s1OgxData} />
+              </CardContent>
+            </Card>
+          )}
+          {s1IcxData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>ICX - {currentMandate.semesters[0].label}</CardTitle>
+                <CardDescription>Programmes entrants (Incoming Exchange)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StatusProgressionTable data={s1IcxData} />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Semestre 2 */}
+          {s2OgxData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>OGX - {currentMandate.semesters[1].label}</CardTitle>
+                <CardDescription>Programmes sortants (Outgoing Exchange)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StatusProgressionTable data={s2OgxData} />
+              </CardContent>
+            </Card>
+          )}
+          {s2IcxData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>ICX - {currentMandate.semesters[1].label}</CardTitle>
+                <CardDescription>Programmes entrants (Incoming Exchange)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StatusProgressionTable data={s2IcxData} />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   )
 }

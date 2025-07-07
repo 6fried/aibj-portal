@@ -144,6 +144,14 @@ export interface PerformanceData {
   }
  
   // Ajoute ces interfaces au début du fichier
+interface AnalyticsObject {
+  doc_count?: number;
+  applicants?: {
+    value?: number;
+  };
+  value?: number;
+}
+
 interface StatusProgressionData {
   month: string // "2024-01"
   apl: number
@@ -154,27 +162,31 @@ interface StatusProgressionData {
   co: number
 }
   
-interface SemesterPeriod {
-  id: string
-  label: string
-  startDate: string
-  endDate: string
-}
 
 export class AiesecAnalyticsService {
-  private accessToken: string
+  private accessToken?: string;
 
-  constructor(accessToken: string) {
-    this.accessToken = accessToken
+  constructor(accessToken?: string) {
+    this.accessToken = accessToken;
+  }
+  private _getApiUrl(path: string): string {
+    const baseUrl =
+      typeof window === 'undefined'
+        ? process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        : ''
+    return `${baseUrl}${path}`
   }
 
-  private getValue(obj: any, fallback: number = 0): number {
-    if (!obj) return fallback
-    if (typeof obj === 'number') return obj
-    if (obj.doc_count !== undefined) return obj.doc_count
-    if (obj.applicants?.value !== undefined) return obj.applicants.value
-    if (obj.value !== undefined) return obj.value
-    return fallback
+  private getValue(obj: unknown, fallback: number = 0): number {
+    if (!obj) return fallback;
+    if (typeof obj === 'number') return obj;
+    if (typeof obj === 'object' && obj !== null) {
+        const data = obj as AnalyticsObject;
+        if (typeof data.doc_count === 'number') return data.doc_count;
+        if (typeof data.applicants?.value === 'number') return data.applicants.value;
+        if (typeof data.value === 'number') return data.value;
+    }
+    return fallback;
   }
 
   async getPerformanceData(
@@ -185,13 +197,17 @@ export class AiesecAnalyticsService {
     const endDate = `${year + 1}-01-31`
     
     try {
-      const url = new URL('https://analytics.api.aiesec.org/v2/applications/analyze.json')
-      url.searchParams.append('access_token', this.accessToken)
-      url.searchParams.append('start_date', startDate)
-      url.searchParams.append('end_date', endDate)
-      url.searchParams.append('performance_v3[office_id]', officeId.toString())
+      if (!this.accessToken) {
+        throw new Error('Access token is required for this operation');
+      }
+      const url = new URL('https://analytics.api.aiesec.org/v2/applications/analyze.json');
+      url.searchParams.append('access_token', this.accessToken);
+      url.searchParams.append('start_date', startDate);
+      url.searchParams.append('end_date', endDate);
+      url.searchParams.append('performance_v3[office_id]', officeId.toString());
 
-      const response = await fetch(url.toString(), {
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
       })
@@ -210,7 +226,7 @@ export class AiesecAnalyticsService {
     }
   }
 
-  private processPerformanceData(rawData: any): ProcessedPerformanceData {
+  private processPerformanceData(rawData: PerformanceData): ProcessedPerformanceData {
     const data: ProcessedPerformanceData = {
       ogx: {
         total: {
@@ -314,13 +330,13 @@ export class AiesecAnalyticsService {
       const monthEnd = this.getLastDayOfMonth(month)
       
       try {
-        const url = new URL('https://analytics.api.aiesec.org/v2/applications/analyze.json')
-        url.searchParams.append('access_token', this.accessToken)
-        url.searchParams.append('start_date', monthStart)
-        url.searchParams.append('end_date', monthEnd)
-        url.searchParams.append('performance_v3[office_id]', officeId.toString())
-        
-        const response = await fetch(url.toString())
+        const url = this._getApiUrl(`/api/analytics/progression?startDate=${monthStart}&endDate=${monthEnd}&officeId=${officeId}`)
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        })
+
         if (!response.ok) {
           throw new Error(`Failed to fetch data for ${month}: ${response.statusText}`)
         }
@@ -376,7 +392,7 @@ export class AiesecAnalyticsService {
     return `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
   }
   
-  private extractStatusCount(data: any, status: string, type: 'ogx' | 'icx'): number {
+  private extractStatusCount(data: PerformanceData, status: string, type: 'ogx' | 'icx'): number {
     const statusMapping = {
       'ogx': {
         'applied': ['o_applied_7', 'o_applied_8', 'o_applied_9'],
@@ -400,28 +416,33 @@ export class AiesecAnalyticsService {
     let total = 0
     
     for (const field of fields) {
-      if (data[field]) {
-        total += this.getValue(data[field])
+      const key = field as keyof PerformanceData;
+      if (data[key]) {
+        total += this.getValue(data[key]);
       }
     }
     
     return total
   }
   
-  static getSemesterPeriods(year: number): SemesterPeriod[] {
-    return [
-      {
-        id: `${year}-S1`,
-        label: `Semestre 1 ${year}`,
-        startDate: `${year}-02-01`,
-        endDate: `${year}-07-31`
-      },
-      {
-        id: `${year}-S2`, 
-        label: `Semestre 2 ${year}`,
-        startDate: `${year}-08-01`,
-        endDate: `${year + 1}-01-31`
-      }
-    ]
+  public static getMandatePeriods(year: number) {
+    const s1 = {
+      id: `s1-${year}`,
+      label: `Semestre 1: Fév-Jul ${year}`,
+      startDate: `${year}-02-01`,
+      endDate: `${year}-07-31`
+    };
+    const s2 = {
+      id: `s2-${year}`,
+      label: `Semestre 2: Aoû ${year} - Jan ${year + 1}`,
+      startDate: `${year}-08-01`,
+      endDate: `${year + 1}-01-31`
+    };
+
+    return {
+      id: `mandate-${year}`,
+      label: `Mandat ${year}/${year + 1}`,
+      semesters: [s1, s2]
+    };
   }
 }
