@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { ProcessedPerformanceData } from "@/lib/analytics/aiesec-analytics"
 import { useEffect, useState, useCallback } from "react"
 import { entityList } from '@/lib/data/entities'
+import { PerformanceCardSkeleton } from "@/components/performance/PerformanceCardSkeleton"
 import { Loader2, LayoutDashboard } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -109,9 +110,11 @@ export default function PerformancePage() {
           />
         )}
 
-        <div className="flex flex-1 flex-col items-center justify-center">
+        <div className="flex flex-1 flex-col">
           {loading ? (
-            <Loader2 className="h-16 w-16 animate-spin" />
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mt-6">
+              {[...Array(8)].map((_, i) => <PerformanceCardSkeleton key={i} />)}
+            </div>
           ) : error ? (
             <Alert variant="destructive" className="max-w-lg flex flex-col items-center text-center p-6">
               <AlertTitle className="mb-2">Erreur de chargement</AlertTitle>

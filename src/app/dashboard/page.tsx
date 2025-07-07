@@ -1,12 +1,14 @@
 'use client'
 
 import { useAuth } from '@/hooks/use-auth'
+import { Button } from '@/components/ui/button'
+import { LogOut } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
 import { BarChart, FileText, Users } from 'lucide-react'
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
 
   const apps = [
     {
@@ -34,9 +36,15 @@ export default function DashboardPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 bg-gray-50/50 dark:bg-zinc-900/50">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name || 'AIESECer'}!</h1>
-        <p className="text-muted-foreground">Select an application to get started.</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name || 'AIESECer'}!</h1>
+          <p className="text-muted-foreground">Select an application to get started.</p>
+        </div>
+        <Button variant="outline" onClick={logout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign Out
+        </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -50,11 +58,6 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold">{app.title}</h3>
                 <p className="text-sm text-muted-foreground mt-1">{app.description}</p>
               </CardContent>
-              {!app.enabled && (
-                <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full">
-                  SOON
-                </div>
-              )}
             </Card>
           </Link>
         ))}
