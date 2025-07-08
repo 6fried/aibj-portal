@@ -1,10 +1,11 @@
 "use client"
 
 import { PerformanceFilters } from "@/components/performance/PerformanceFilters"
-import { PerformanceCard } from "@/components/performance/PerformanceCard"
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/hooks/use-auth"
-import { ProcessedPerformanceData } from "@/lib/analytics/aiesec-analytics"
+import { PerformanceFunnelCard } from "@/components/performance/PerformanceFunnelCard";
+import { DebugQueryCard } from '@/components/analytics/DebugQueryCard'
 import { useEffect, useState, useCallback } from "react"
 import { entityList } from '@/lib/data/entities'
 import { PerformanceCardSkeleton } from "@/components/performance/PerformanceCardSkeleton"
@@ -17,10 +18,10 @@ export default function PerformancePage() {
   const { user } = useAuth()
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedEntity, setSelectedEntity] = useState('')
-  const [data, setData] = useState<ProcessedPerformanceData | null>(null)
+  const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [cache, setCache] = useState<Record<string, ProcessedPerformanceData>>({})
+  const [cache, setCache] = useState<Record<string, any>>({})
 
   const isMcvp = user?.role === 'mcvp'
 
@@ -36,35 +37,36 @@ export default function PerformancePage() {
 
   const fetchData = useCallback(async (forceRefresh = false) => {
     if (!selectedEntity) {
-      setLoading(false)
-      if (user?.role === 'mcvp') {
-        setError("Veuillez sélectionner une entité.")
-      }
-      return
+      // Ne rien faire si aucune entité n'est sélectionnée
+      // L'état de chargement initial s'en chargera
+      return;
     }
 
-    const cacheKey = `${selectedEntity}-${selectedYear}`
+    const fromDate = `${selectedYear}-01-01`;
+    const toDate = `${selectedYear}-12-31`;
+    const cacheKey = `${selectedEntity}-${selectedYear}`;
+
     if (cache[cacheKey] && !forceRefresh) {
-      setData(cache[cacheKey])
-      setLoading(false)
-      setError(null)
-      return
+      setData(cache[cacheKey]);
+      setLoading(false);
+      setError(null);
+      return;
     }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const response = await fetch(
-        `/api/performance?entityId=${selectedEntity}&year=${selectedYear}`
-      )
+        `/api/performance?entityId=${selectedEntity}&from=${fromDate}&to=${toDate}`
+      );
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `Erreur de chargement (${response.status})`)
+        const errorData = await response.json();
+        throw new Error(errorData.details || `Erreur de chargement (${response.status})`);
       }
-      const result: ProcessedPerformanceData = await response.json()
-      setCache(prev => ({ ...prev, [cacheKey]: result }))
-      setData(result)
+      const result = await response.json();
+      setCache((prev) => ({ ...prev, [cacheKey]: result }));
+      setData(result);
     } catch (e) {
       if (e instanceof Error) {
         setError(e.message || "Une erreur inattendue est survenue.")
@@ -83,7 +85,25 @@ export default function PerformancePage() {
     }
   }, [selectedEntity, selectedYear, fetchData])
 
-  const programmes: Array<'total' | 'gv' | 'gta' | 'gte'> = ['total', 'gv', 'gta', 'gte']
+  const ogxMetrics = {
+    signup: 'Signups',
+    applied: 'Applied',
+    accepted: 'Accepted',
+    approved: 'Approved',
+    realized: 'Realized',
+    finished: 'Finished',
+    completed: 'Completed',
+  };
+
+  const icxMetrics = {
+    open: 'Open',
+    applied: 'Applied',
+    accepted: 'Accepted',
+    approved: 'Approved',
+    realized: 'Realized',
+    finished: 'Finished',
+    completed: 'Completed',
+  };
 
   return (
     <div className="flex h-screen flex-col bg-gray-50">
@@ -104,17 +124,21 @@ export default function PerformancePage() {
           <PerformanceFilters 
             selectedYear={selectedYear}
             selectedEntity={selectedEntity}
-            onYearChange={setSelectedYear}
-            onEntityChange={setSelectedEntity}
+            onYearChange={(year) => {
+              setData(null);
+              setSelectedYear(year);
+            }}
+            onEntityChange={(entity) => {
+              setData(null);
+              setSelectedEntity(entity);
+            }}
             entityList={entityList}
           />
         )}
 
         <div className="flex flex-1 flex-col">
           {loading ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mt-6">
-              {[...Array(8)].map((_, i) => <PerformanceCardSkeleton key={i} />)}
-            </div>
+            <PerformanceCardSkeleton />
           ) : error ? (
             <Alert variant="destructive" className="max-w-lg flex flex-col items-center text-center p-6">
               <AlertTitle className="mb-2">Erreur de chargement</AlertTitle>
@@ -130,21 +154,27 @@ export default function PerformancePage() {
                 <TabsTrigger value="icx">ICX</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="ogx" className="pt-6">
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                  {programmes.map(prog => (
-                    <PerformanceCard key={`ogx-${prog}`} data={data} department="ogx" programme={prog} />
-                  ))}
-                </div>
-              </TabsContent>
+              {data && data.ogx && data.icx && (
+                <>
+                  <TabsContent value="ogx" className="pt-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                      <PerformanceFunnelCard programKey="total" data={data.ogx.data} metrics={ogxMetrics} />
+                      <PerformanceFunnelCard programKey="gv" data={data.ogx.data} metrics={ogxMetrics} />
+                      <PerformanceFunnelCard programKey="gta" data={data.ogx.data} metrics={ogxMetrics} />
+                      <PerformanceFunnelCard programKey="gte" data={data.ogx.data} metrics={ogxMetrics} />
+                    </div>
+                  </TabsContent>
 
-              <TabsContent value="icx" className="pt-6">
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                   {programmes.map(prog => (
-                    <PerformanceCard key={`icx-${prog}`} data={data} department="icx" programme={prog} />
-                  ))}
-                </div>
-              </TabsContent>
+                  <TabsContent value="icx" className="pt-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                      <PerformanceFunnelCard programKey="total" data={data.icx.data} metrics={icxMetrics} />
+                      <PerformanceFunnelCard programKey="gv" data={data.icx.data} metrics={icxMetrics} />
+                      <PerformanceFunnelCard programKey="gta" data={data.icx.data} metrics={icxMetrics} />
+                      <PerformanceFunnelCard programKey="gte" data={data.icx.data} metrics={icxMetrics} />
+                    </div>
+                  </TabsContent>
+                </>
+              )}
             </Tabs>
           ) : (
             <div className="text-center text-gray-500">

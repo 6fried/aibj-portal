@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useAuth } from '@/hooks/use-auth'
-import { AiesecAnalyticsService } from '@/lib/analytics/aiesec-analytics'
+import { useAuth } from '@/hooks/use-auth';
+import { getMandatePeriods } from '@/lib/dates';
+
 import { StatusProgressionTable } from '@/components/reports/status-progression-table'
 import { RefreshCw, FileText, LayoutDashboard, Loader2 } from 'lucide-react'
 import Link from 'next/link'
@@ -68,10 +69,10 @@ export default function ReportsPage() {
     }
   }, [user, isMcvp])
 
-  const currentYear = new Date().getFullYear()
-  const availableMandates: Mandate[] = []
+  const currentYear = new Date().getFullYear();
+  const availableMandates: Mandate[] = [];
   for (let year = 2019; year <= currentYear; year++) {
-    availableMandates.push(AiesecAnalyticsService.getMandatePeriods(year))
+    availableMandates.push(getMandatePeriods(year));
   }
 
   const generateReport = async () => {
@@ -93,11 +94,28 @@ export default function ReportsPage() {
     setCurrentMandate(mandate)
 
     try {
-      const analyticsService = new AiesecAnalyticsService()
+      const fetchSemesterData = async (semester: Semester) => {
+        const response = await fetch('/api/reports/progression', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityId: selectedEntity,
+            startDate: semester.startDate,
+            endDate: semester.endDate,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.details || `Failed to fetch data for ${semester.label}`);
+        }
+        return response.json();
+      };
+
       const [s1Data, s2Data] = await Promise.all([
-        analyticsService.getStatusProgressionData(mandate.semesters[0].startDate, mandate.semesters[0].endDate, parseInt(selectedEntity)),
-        analyticsService.getStatusProgressionData(mandate.semesters[1].startDate, mandate.semesters[1].endDate, parseInt(selectedEntity)),
-      ])
+        fetchSemesterData(mandate.semesters[0]),
+        fetchSemesterData(mandate.semesters[1]),
+      ]);
       setReportData({
         s1Ogx: s1Data.ogx,
         s1Icx: s1Data.icx,

@@ -1,7 +1,7 @@
 // src/app/api/performance/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { AiesecAnalyticsService } from '@/lib/analytics/aiesec-analytics'
+import { cookies } from 'next/headers';
+import { NextResponse, NextRequest } from 'next/server';
+import { fetchPerformanceFunnel } from '@/lib/analytics/graphql-fetcher';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,39 +9,27 @@ export async function GET(request: NextRequest) {
     const accessToken = cookieStore.get('aiesec_access_token')?.value
 
     if (!accessToken) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
     const entityId = searchParams.get('entityId')
-    const year = searchParams.get('year')
 
-    if (!entityId) {
-      return NextResponse.json({ error: 'EntityId requis' }, { status: 400 })
+    if (!from || !to || !entityId) {
+      return NextResponse.json({ error: 'Missing required filters: from, to, entityId' }, { status: 400 })
     }
 
-    const officeId = parseInt(entityId, 10)
-    if (isNaN(officeId)) {
-      return NextResponse.json({ error: 'EntityId doit être un nombre' }, { status: 400 })
-    }
+    const data = await fetchPerformanceFunnel(from, to, entityId, accessToken);
 
-    console.log(`Fetching analytics for office ID: ${officeId}, year: ${year || 'current'}`)
+    return NextResponse.json(data);
 
-    const analyticsService = new AiesecAnalyticsService(accessToken)
-    const data = await analyticsService.getPerformanceData(
-      officeId, 
-      year ? parseInt(year) : undefined
-    )
-
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error('Erreur lors de la récupération des données de performance:', error)
+  } catch (error: any) {
+    console.error('Error in performance route:', error);
     return NextResponse.json(
-      { 
-        error: 'Erreur serveur interne', 
-        details: error instanceof Error ? error.message : 'Erreur inconnue'
-      }, 
+      { error: 'Failed to fetch performance data', details: error.message },
       { status: 500 }
-    )
+    );
   }
 }
