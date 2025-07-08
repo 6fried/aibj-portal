@@ -1,65 +1,57 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Users, Target, CheckCircle, ThumbsUp, Goal, Trophy, Star } from 'lucide-react';
+import { cn } from "@/lib/utils"
+import { User, Target, CircleCheck, ThumbsUp, Eye, FileCheck, Star } from 'lucide-react';
 
-const programDetails: { [key: string]: { title: string; color: string; } } = {
-  total: { title: 'Total', color: 'text-blue-500' },
-  gv: { title: 'Global Volunteer', color: 'text-red-500' },
-  gta: { title: 'Global Talent', color: 'text-teal-500' },
-  gte: { title: 'Global Teacher', color: 'text-orange-500' },
-};
-
-const metricIcons: { [key: string]: React.ElementType } = {
-  signups: Users,
-  applied: Target,
-  accepted: CheckCircle,
-  approved: ThumbsUp,
-  realized: Goal,
-  finished: Trophy,
-  completed: Star,
+const metricIcons: { [key: string]: React.ReactNode } = {
+  signup: <User size={18} />,
+  applied: <Target size={18} />,
+  accepted: <CircleCheck size={18} />,
+  approved: <ThumbsUp size={18} />,
+  realized: <Eye size={18} />,
+  finished: <FileCheck size={18} />,
+  completed: <Star size={18} />,
 };
 
 interface PerformanceFunnelCardProps {
+  title: string;
   data: any;
   metrics: { [key: string]: string };
   programKey: 'total' | 'gv' | 'gta' | 'gte';
+  color: string;
 }
 
-export function PerformanceFunnelCard({ data, metrics, programKey }: PerformanceFunnelCardProps) {
+export function PerformanceFunnelCard({ title, data, metrics, programKey, color }: PerformanceFunnelCardProps) {
   if (!data) {
     return null;
   }
 
-  const details = programDetails[programKey];
-  const realizedValue = data?.[`realized_${programKey}`]?.paging?.total_items ?? 0;
+  const realizedMetric = data?.[`realized_${programKey}`]?.paging?.total_items ?? 0;
 
   return (
-    <Card className="overflow-hidden rounded-lg shadow-md">
+    <Card className={cn("border-t-4", color)}>
       <CardContent className="p-4">
-        <div className="flex items-start justify-between">
+        <div className="flex justify-between items-start mb-2">
           <div>
-            <h3 className={`text-lg font-bold ${details.color}`}>{details.title}</h3>
+            <h3 className="text-lg font-bold">{title}</h3>
             <p className="text-sm text-gray-500">Réalisations</p>
           </div>
-          <div className={`text-3xl font-bold ${details.color}`}>
-            {realizedValue}
-          </div>
+          <p className={cn("text-2xl font-bold", color.replace('border-', 'text-'))}>{realizedMetric}</p>
         </div>
-        <ul className="mt-4 space-y-2">
-          {Object.entries(metrics).map(([metricKey, metricLabel]) => {
-            const Icon = metricIcons[metricKey] || Star;
-            const value = data?.[`${metricKey}_${programKey}`]?.paging?.total_items ?? 0;
-            return (
-              <li key={metricKey} className="flex items-center justify-between text-sm">
-                <div className="flex items-center text-gray-600">
-                  <Icon className="mr-2 h-4 w-4" />
-                  <span>{metricLabel}</span>
-                </div>
-                <span className="font-semibold text-gray-800">{value}</span>
-              </li>
-            );
-          })}
+        
+        <ul className="space-y-1">
+          {Object.entries(metrics).map(([metricKey, metricLabel]) => (
+            <li key={metricKey} className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2 text-gray-600">
+                {metricIcons[metricKey]}
+                <span>{metricLabel}</span>
+              </div>
+              <span className="font-semibold text-gray-800">
+                {data?.[`${metricKey}_${programKey}`]?.paging?.total_items ?? 0}
+              </span>
+            </li>
+          ))}
         </ul>
       </CardContent>
     </Card>

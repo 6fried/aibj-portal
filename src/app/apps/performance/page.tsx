@@ -86,7 +86,7 @@ export default function PerformancePage() {
   }, [selectedEntity, selectedYear, fetchData])
 
   const ogxMetrics = {
-    signup: 'Signups',
+    signup: 'Signup',
     applied: 'Applied',
     accepted: 'Accepted',
     approved: 'Approved',
@@ -104,6 +104,13 @@ export default function PerformancePage() {
     finished: 'Finished',
     completed: 'Completed',
   };
+
+  const programCards = [
+    { title: "Total", programKey: "total", color: "border-blue-500" },
+    { title: "Global Volunteer", programKey: "gv", color: "border-red-500" },
+    { title: "Global Talent", programKey: "gta", color: "border-cyan-500" },
+    { title: "Global Teacher", programKey: "gte", color: "border-orange-500" },
+  ] as const;
 
   return (
     <div className="flex h-screen flex-col bg-gray-50">
@@ -158,19 +165,31 @@ export default function PerformancePage() {
                 <>
                   <TabsContent value="ogx" className="pt-6">
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-                      <PerformanceFunnelCard programKey="total" data={data.ogx.data} metrics={ogxMetrics} />
-                      <PerformanceFunnelCard programKey="gv" data={data.ogx.data} metrics={ogxMetrics} />
-                      <PerformanceFunnelCard programKey="gta" data={data.ogx.data} metrics={ogxMetrics} />
-                      <PerformanceFunnelCard programKey="gte" data={data.ogx.data} metrics={ogxMetrics} />
+                      {programCards.map(card => (
+                        <PerformanceFunnelCard 
+                          key={card.programKey}
+                          title={card.title} 
+                          data={data.ogx.data} 
+                          metrics={ogxMetrics} 
+                          programKey={card.programKey}
+                          color={card.color}
+                        />
+                      ))}
                     </div>
                   </TabsContent>
 
                   <TabsContent value="icx" className="pt-6">
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-                      <PerformanceFunnelCard programKey="total" data={data.icx.data} metrics={icxMetrics} />
-                      <PerformanceFunnelCard programKey="gv" data={data.icx.data} metrics={icxMetrics} />
-                      <PerformanceFunnelCard programKey="gta" data={data.icx.data} metrics={icxMetrics} />
-                      <PerformanceFunnelCard programKey="gte" data={data.icx.data} metrics={icxMetrics} />
+                      {programCards.map(card => (
+                        <PerformanceFunnelCard 
+                          key={card.programKey}
+                          title={card.title} 
+                          data={data.icx.data} 
+                          metrics={icxMetrics} 
+                          programKey={card.programKey}
+                          color={card.color}
+                        />
+                      ))}
                     </div>
                   </TabsContent>
                 </>

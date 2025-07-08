@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required filters: from, to, entityId' }, { status: 400 });
     }
 
-    const data = await fetchPerformanceFunnel(from, to, entityId, accessToken, true);
+    const data = await fetchPerformanceFunnel(from, to, entityId, accessToken);
 
     return NextResponse.json(data);
 
