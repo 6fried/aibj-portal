@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
-import { BarChart, FileText, Users } from 'lucide-react'
+import { BarChart, Users } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
@@ -23,7 +23,7 @@ export default function DashboardPage() {
     //   description: 'Generate term and team reports.',
     //   href: '/apps/reports',
     //   icon: <FileText className="h-8 w-8 text-aiesec-blue" />,
-    //   enabled: true,
+    //   enabled: false,
     // },
     {
       title: 'Team Management',
