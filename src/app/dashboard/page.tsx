@@ -14,17 +14,17 @@ export default function DashboardPage() {
     {
       title: 'Performance',
       description: 'Analyze operational performance.',
-      href: '/apps/performance',
+      href: '/apps/reports',
       icon: <BarChart className="h-8 w-8 text-aiesec-blue" />,
       enabled: true,
     },
-    {
-      title: 'Reports',
-      description: 'Generate term and team reports.',
-      href: '/apps/reports',
-      icon: <FileText className="h-8 w-8 text-aiesec-blue" />,
-      enabled: true,
-    },
+    // {
+    //   title: 'Reports',
+    //   description: 'Generate term and team reports.',
+    //   href: '/apps/reports',
+    //   icon: <FileText className="h-8 w-8 text-aiesec-blue" />,
+    //   enabled: true,
+    // },
     {
       title: 'Team Management',
       description: 'Manage your teams and members.',
