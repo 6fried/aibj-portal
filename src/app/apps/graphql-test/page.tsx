@@ -1,115 +1,165 @@
-// Nouvelle page pour tester l'API GraphQL
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
-import { DebugQueryCard } from '@/components/analytics/DebugQueryCard'
-import { GraphQLResultCard } from '@/components/analytics/GraphQLResultCard'
-
-const ogxMetrics = {
-  signup: 'Signups',
-  applied: 'Applied',
-  accepted: 'Accepted',
-  approved: 'Approved',
-  realized: 'Realized',
-  finished: 'Finished',
-  completed: 'Completed',
-};
-
-const icxMetrics = {
-  open: 'Open',
-  applied: 'Applied',
-  accepted: 'Accepted',
-  approved: 'Approved',
-  realized: 'Realized',
-  finished: 'Finished',
-  completed: 'Completed',
-};
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AnalyticsFilters } from '@/components/analytics/AnalyticsFilters';
+import { useAuth } from '@/hooks/use-auth';
+import { getTodayRange } from '@/lib/utils/date-helpers';
+import { entityList } from '@/lib/data/entities';
+import { format } from 'date-fns';
+import { RefreshCw } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ProgramReportTable } from '@/components/analytics/ProgramReportTable';
+import { MonthlyData } from '@/lib/types';
 
 export default function GraphQLTestPage() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<any>(null)
-  const [filters, setFilters] = useState({
-    from: '2025-02-01',
-    to: '2025-07-07',
-    entityId: '175',
-  })
+  const { user } = useAuth();
+  const [reportData, setReportData] = useState<MonthlyData[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(getTodayRange().from);
+  const [endDate, setEndDate] = useState(getTodayRange().to);
+  const [selectedEntity, setSelectedEntity] = useState<string>('');
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFilters(prev => ({ ...prev, [name]: value }))
-  }
+  const isMcvp = user?.role === 'mcvp';
 
-  const handleSubmit = async () => {
-    setLoading(true)
-    setError(null)
-    setResult(null)
+  useEffect(() => {
+    if (user?.entityId) {
+      if (isMcvp) {
+        setSelectedEntity('2110'); // Default to MC
+      } else {
+        setSelectedEntity(user.entityId);
+      }
+    }
+  }, [user, isMcvp]);
+
+  const handleFetchData = useCallback(async () => {
+    if (!startDate || !endDate || !selectedEntity) {
+      setError('Veuillez sélectionner une période et une entité.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setReportData(null);
 
     try {
       const response = await fetch('/api/graphql-test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filters),
-
-      })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          entityId: selectedEntity,
+          from: format(startDate, 'yyyy-MM-dd'),
+          to: format(endDate, 'yyyy-MM-dd'),
+        }),
+      });
 
       if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || 'An error occurred')
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch data');
       }
 
-      const responseData = await response.json()
-      setResult(responseData)
-    } catch (e: any) {
-      setError(e.message)
+      const data = await response.json();
+      setReportData(data);
+
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  }, [startDate, endDate, selectedEntity]);
 
   return (
-    <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-      <h1 className="text-2xl font-bold">GraphQL API Performance Test</h1>
-      
+    <div className="container mx-auto p-4">
       <Card>
         <CardHeader>
-          <CardTitle>Query Filters</CardTitle>
+          <CardTitle>{`Test de l'API GraphQL pour les Rapports`}</CardTitle>
+          <CardDescription>
+            Utilisez les filtres ci-dessous pour construire et exécuter une requête GraphQL qui réplique les données de la page de rapports.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="grid gap-2">
-            <Label htmlFor="from">From</Label>
-            <Input id="from" name="from" type="date" value={filters.from} onChange={handleInputChange} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="to">To</Label>
-            <Input id="to" name="to" type="date" value={filters.to} onChange={handleInputChange} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="entityId">Entity ID</Label>
-            <Input id="entityId" name="entityId" value={filters.entityId} onChange={handleInputChange} />
-          </div>
+        <CardContent className="flex flex-col gap-4">
+          <AnalyticsFilters 
+            dateRange={{ from: startDate, to: endDate }}
+            selectedEntity={selectedEntity}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            onEntityChange={setSelectedEntity}
+            onApplyFilters={handleFetchData}
+            entityList={entityList}
+            isMcvp={isMcvp}
+          />
         </CardContent>
       </Card>
 
-      <Button onClick={handleSubmit} disabled={loading} className="w-full md:w-auto">
-        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
-        Run Test Query
-      </Button>
-
-      {error && <p className="text-red-500">Error: {error}</p>}
-
-      {result && (
-        <div className="space-y-6">
-          {result.ogx && <GraphQLResultCard title="OGX Performance Funnel" data={result.ogx.data} metrics={ogxMetrics} />}
-          {result.icx && <GraphQLResultCard title="ICX Performance Funnel" data={result.icx.data} metrics={icxMetrics} />}
-          {result.query && <DebugQueryCard query={result.query} />}
+      {loading && (
+        <div className="flex justify-center items-center mt-8">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <p className="ml-4 text-lg">Chargement des données...</p>
         </div>
       )}
-    </main>
-  )
+
+      {error && (
+        <Card className="mt-8 bg-destructive/10 border-destructive">
+          <CardHeader>
+            <CardTitle className="text-destructive">Erreur</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {reportData && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Résultats de la requête GraphQL</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="ogx" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="ogx">Outgoing Exchange (OGX)</TabsTrigger>
+                <TabsTrigger value="icx">Incoming Exchange (ICX)</TabsTrigger>
+              </TabsList>
+              <TabsContent value="ogx">
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader><CardTitle>oGV Performance</CardTitle></CardHeader>
+                    <CardContent><ProgramReportTable data={reportData} program="gv" type="ogx" /></CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader><CardTitle>oGTa Performance</CardTitle></CardHeader>
+                    <CardContent><ProgramReportTable data={reportData} program="gta" type="ogx" /></CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader><CardTitle>oGTe Performance</CardTitle></CardHeader>
+                    <CardContent><ProgramReportTable data={reportData} program="gte" type="ogx" /></CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+              <TabsContent value="icx">
+                 <div className="space-y-4">
+                    <Card>
+                      <CardHeader><CardTitle>iGV Performance</CardTitle></CardHeader>
+                      <CardContent><ProgramReportTable data={reportData} program="gv" type="icx" /></CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader><CardTitle>iGTa Performance</CardTitle></CardHeader>
+                      <CardContent><ProgramReportTable data={reportData} program="gta" type="icx" /></CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader><CardTitle>iGTe Performance</CardTitle></CardHeader>
+                      <CardContent><ProgramReportTable data={reportData} program="gte" type="icx" /></CardContent>
+                    </Card>
+                  </div>
+              </TabsContent>
+            </Tabs>
+
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 }

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse, NextRequest } from 'next/server';
-import { fetchPerformanceFunnel } from '@/lib/analytics/graphql-fetcher';
+import { fetchStatusProgression } from '@/lib/analytics/graphql-fetcher';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,23 +12,24 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const entityId = searchParams.get('entityId')
     const from = searchParams.get('from')
     const to = searchParams.get('to')
+    const entityId = searchParams.get('entityId')
 
-    if (!entityId || !from || !to) {
-      return NextResponse.json({ error: 'Missing required parameters: entityId, from, to' }, { status: 400 })
+    if (!from || !to || !entityId) {
+      return NextResponse.json({ error: 'Missing required filters: from, to, entityId' }, { status: 400 })
     }
 
-    const data = await fetchPerformanceFunnel(entityId, from, to, accessToken);
+    const data = await fetchStatusProgression(entityId, from, to, accessToken);
 
     return NextResponse.json(data);
 
   } catch (error: unknown) {
-    console.error('Error in performance route:', error);
+    console.error('Error in reports route:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch performance data', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Failed to fetch reports data', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
 }
+

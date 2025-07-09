@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
-import { BarChart, FileText, Users, FlaskConical } from 'lucide-react'
+import { BarChart, FileText, Users } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
@@ -31,13 +31,6 @@ export default function DashboardPage() {
       href: '#',
       icon: <Users className="h-8 w-8 text-gray-400" />,
       enabled: false,
-    },
-    {
-      title: 'GraphQL Test',
-      description: 'Test performance of the GraphQL API.',
-      href: '/apps/graphql-test',
-      icon: <FlaskConical className="h-8 w-8 text-green-500" />,
-      enabled: true,
     },
   ]
 

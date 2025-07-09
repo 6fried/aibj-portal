@@ -1,227 +1,147 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useAuth } from '@/hooks/use-auth'
-import { AiesecAnalyticsService } from '@/lib/analytics/aiesec-analytics'
-import { StatusProgressionTable } from '@/components/reports/status-progression-table'
-import { RefreshCw, FileText, LayoutDashboard, Loader2 } from 'lucide-react'
-import Link from 'next/link'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-
-interface StatusProgressionData {
-  month: string
-  apl: number
-  acc: number
-  apd: number
-  re: number
-  fin: number
-  co: number
-}
-
-interface Semester {
-  id: string;
-  label: string;
-  startDate: string;
-  endDate: string;
-}
-
-interface Mandate {
-  id: string;
-  label: string;
-  semesters: Semester[];
-}
-
-const entityList = [
-  { id: "2422", name: "." },
-  { id: "175", name: "Abomey-Calavi" },
-  { id: "6701", name: "AIESEC in Benin " },
-  { id: "3445", name: "Cotonou" },
-  { id: "458", name: "ENEAM" },
-  { id: "2110", name: "MC Benin" },
-  { id: "2482", name: "MC Benin 2" },
-  { id: "2039", name: "Porto-Novo" },
-  { id: "2055", name: "UATM Gasa Formation" },
-]
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/hooks/use-auth';
+import { ProgramReportTable } from '@/components/analytics/ProgramReportTable';
+import { MonthlyData } from '@/lib/types';
+import { MonthSelector } from '@/components/analytics/MonthSelector';
+import { FileText, LayoutDashboard, Loader2, Globe, Briefcase, GraduationCap } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ReportsPage() {
-  const { user } = useAuth()
-  const [reportData, setReportData] = useState<Record<string, StatusProgressionData[]>>({})
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedMandate, setSelectedMandate] = useState<string>('')
-  const [selectedEntity, setSelectedEntity] = useState<string>('')
-  const [currentMandate, setCurrentMandate] = useState<Mandate | null>(null)
+  const { user } = useAuth();
+  const [reportData, setReportData] = useState<MonthlyData[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
 
-  const isMcvp = user?.role === 'mcvp'
-
-  useEffect(() => {
-    if (user?.entityId) {
-      if (isMcvp) {
-        setSelectedEntity('2110') // Default to MC
-      } else {
-        setSelectedEntity(user.entityId)
-      }
-    }
-  }, [user, isMcvp])
-
-  const currentYear = new Date().getFullYear()
-  const availableMandates: Mandate[] = []
-  for (let year = 2019; year <= currentYear; year++) {
-    availableMandates.push(AiesecAnalyticsService.getMandatePeriods(year))
-  }
-
-  const generateReport = async () => {
-    if (!selectedMandate || !selectedEntity) {
-      setError('Veuillez sélectionner un mandat et une entité.')
-      return
+  const handleGenerateReport = async () => {
+    if (!selectedMonths.length) {
+      setError('Veuillez sélectionner au moins un mois.');
+      return;
     }
 
-    setLoading(true)
-    setError(null)
-    setReportData({})
-
-    const mandate = availableMandates.find(m => m.id === selectedMandate)
-    if (!mandate) {
-      setError('Mandat sélectionné non valide.')
-      setLoading(false)
-      return
-    }
-    setCurrentMandate(mandate)
+    setLoading(true);
+    setError(null);
+    setReportData(null);
 
     try {
-      const analyticsService = new AiesecAnalyticsService()
-      const [s1Data, s2Data] = await Promise.all([
-        analyticsService.getStatusProgressionData(mandate.semesters[0].startDate, mandate.semesters[0].endDate, parseInt(selectedEntity)),
-        analyticsService.getStatusProgressionData(mandate.semesters[1].startDate, mandate.semesters[1].endDate, parseInt(selectedEntity)),
-      ])
-      setReportData({
-        s1Ogx: s1Data.ogx,
-        s1Icx: s1Data.icx,
-        s2Ogx: s2Data.ogx,
-        s2Icx: s2Data.icx,
-      })
-    } catch (e) {
-      if (e instanceof Error) {
-        setError(e.message || 'Une erreur est survenue lors de la génération du rapport.')
-      } else {
-        setError('Une erreur est survenue lors de la génération du rapport.')
+      const response = await fetch('/api/graphql-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          officeId: user?.entityId,
+          selectedMonths: selectedMonths
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Une erreur est survenue lors de la génération du rapport.');
       }
+
+      const data = await response.json();
+      setReportData(data);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const hasData = Object.values(reportData).some(d => d.length > 0)
+  const handleApplyMonths = (months: string[]) => {
+    setSelectedMonths(months);
+  };
 
   return (
-    <main className="flex h-screen flex-col bg-gray-50">
-      <div className="flex flex-1 flex-col space-y-4 p-4 pt-6 md:p-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Rapports de Performance</h1>
-          <Link href="/dashboard" passHref>
-            <Button variant="outline">
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Dashboard
-            </Button>
-          </Link>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Configuration du Rapport</CardTitle>
-            <CardDescription>Sélectionnez un mandat pour analyser la progression des statuts.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 md:flex-row md:items-end">
-            <div className="flex flex-1 flex-col gap-4 md:flex-row">
-              <div className="flex-1">
-                <label className="text-sm font-medium mb-2 block">Mandat LC</label>
-                <Select value={selectedMandate} onValueChange={setSelectedMandate}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un mandat" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableMandates.map(mandate => (
-                      <SelectItem key={mandate.id} value={mandate.id}>{mandate.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {isMcvp && (
-                <div className="flex-1">
-                  <label className="text-sm font-medium mb-2 block">Entité</label>
-                  <Select value={selectedEntity} onValueChange={setSelectedEntity}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une entité" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {entityList.map(entity => (
-                        <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-            <Button onClick={generateReport} disabled={loading || !selectedMandate || !selectedEntity} className="w-full self-end md:w-auto">
-              {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} 
-              <span className="ml-2">{loading ? 'Génération...' : 'Générer le Rapport'}</span>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <div className="flex flex-1 flex-col items-center justify-center rounded-lg border bg-white p-6 shadow-sm">
-          {loading ? (
-            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-          ) : error ? (
-             <Alert variant="destructive" className="max-w-lg">
-                <AlertTitle>Erreur</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-          ) : hasData && currentMandate ? (
-            <Tabs defaultValue="s1" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="s1">{currentMandate.semesters[0].label}</TabsTrigger>
-                <TabsTrigger value="s2">{currentMandate.semesters[1].label}</TabsTrigger>
-              </TabsList>
-              <TabsContent value="s1" className="mt-4">
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <ReportCard title="Outgoing Exchange (OGX)" data={reportData.s1Ogx} />
-                  <ReportCard title="Incoming Exchange (ICX)" data={reportData.s1Icx} />
-                </div>
-              </TabsContent>
-              <TabsContent value="s2" className="mt-4">
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <ReportCard title="Outgoing Exchange (OGX)" data={reportData.s2Ogx} />
-                  <ReportCard title="Incoming Exchange (ICX)" data={reportData.s2Icx} />
-                </div>
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <div className="text-center">
-              <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Prêt à analyser</h3>
-              <p className="mt-1 text-sm text-gray-500">Sélectionnez un mandat et générez un rapport.</p>
-            </div>
-          )}
-        </div>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Rapports Mensuels</h2>
+        <Link href="/dashboard" passHref>
+          <Button variant="outline">
+            <LayoutDashboard className="mr-2 h-4 w-4" />
+            Dashboard
+          </Button>
+        </Link>
       </div>
-    </main>
-  )
-}
 
-function ReportCard({ title, data }: { title: string, data: StatusProgressionData[] }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <StatusProgressionTable data={data} />
-      </CardContent>
-    </Card>
-  )
+      <div className='p-4 border rounded-lg my-4 bg-card flex items-center gap-4 flex-wrap'>
+        <MonthSelector selectedMonths={selectedMonths} onApply={handleApplyMonths} />
+        <Button onClick={handleGenerateReport} disabled={loading || selectedMonths.length === 0}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />} 
+          Générer le rapport
+        </Button>
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Erreur</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {!reportData && !loading && !error && (
+        <Alert>
+          <LayoutDashboard className="h-4 w-4" />
+          <AlertTitle>Prêt à générer votre rapport</AlertTitle>
+          <AlertDescription>
+            { `Veuillez sélectionner les mois que vous souhaitez analyser et cliquez sur "Générer le rapport" pour commencer.`}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {loading && (
+        <div className="flex items-center justify-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className='ml-4 text-muted-foreground'>Génération du rapport en cours...</p>
+        </div>
+      )}
+
+      {reportData && (
+        <Tabs defaultValue="ogx" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="ogx">Outgoing Exchange (OGX)</TabsTrigger>
+            <TabsTrigger value="icx">Incoming Exchange (ICX)</TabsTrigger>
+          </TabsList>
+          <TabsContent value="ogx">
+            <div className="space-y-6 pt-4">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center text-blue-600"><Globe className="mr-2 h-5 w-5" /> oGV Performance</h3>
+                <ProgramReportTable data={reportData} program="gv" type="ogx" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold flex items-center text-orange-600"><Briefcase className="mr-2 h-5 w-5" /> oGTa Performance</h3>
+                <ProgramReportTable data={reportData} program="gta" type="ogx" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold flex items-center text-teal-600"><GraduationCap className="mr-2 h-5 w-5" /> oGTe Performance</h3>
+                <ProgramReportTable data={reportData} program="gte" type="ogx" />
+              </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="icx">
+            <div className="space-y-6 pt-4">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center text-blue-600"><Globe className="mr-2 h-5 w-5" /> iGV Performance</h3>
+                <ProgramReportTable data={reportData} program="gv" type="icx" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold flex items-center text-orange-600"><Briefcase className="mr-2 h-5 w-5" /> iGTa Performance</h3>
+                <ProgramReportTable data={reportData} program="gta" type="icx" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold flex items-center text-teal-600"><GraduationCap className="mr-2 h-5 w-5" /> iGTe Performance</h3>
+                <ProgramReportTable data={reportData} program="gte" type="icx" />
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      )}
+    </div>
+  );
 }

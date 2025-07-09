@@ -1,5 +1,9 @@
 
 
+interface PerformanceMetric {
+  paging: { total_items: number };
+}
+
 const programs = [
   { id: 7, name: 'gv' },
   { id: 8, name: 'gta' },
@@ -90,8 +94,8 @@ export async function fetchPerformanceFunnel(entityId: string, from: string, to:
     return acc;
   }, {});
 
-  const ogxData: { [key: string]: any } = {};
-  const icxData: { [key: string]: any } = {};
+  const ogxData: Record<string, PerformanceMetric> = {};
+  const icxData: Record<string, PerformanceMetric> = {};
 
   Object.keys(combinedData).forEach(key => {
     if (key.includes('_icx_')) {
@@ -107,3 +111,98 @@ export async function fetchPerformanceFunnel(entityId: string, from: string, to:
     query: allQueries.join('\n\n---\n\n')
   };
 }
+
+
+// --- Fonctions pour la page des rapports ---
+
+const monthMap: { [key: string]: string } = {
+  '01': 'Janvier', '02': 'Février', '03': 'Mars', '04': 'Avril', '05': 'Mai', '06': 'Juin',
+  '07': 'Juillet', '08': 'Août', '09': 'Septembre', '10': 'Octobre', '11': 'Novembre', '12': 'Décembre'
+};
+
+function buildStatusProgressionQuery(from: string, to: string, entityId: string, product: 'ogx' | 'icx'): string {
+  const fromDate = `${from}T00:00:00+01:00`;
+  const toDate = `${to}T23:59:59+01:00`;
+
+  return `
+    query {
+      ${product}_progression: analytics(
+        breakdown_by: "month"
+        end_date: "${toDate}"
+        start_date: "${fromDate}"
+        type: "applications_breakdown"
+        filters: { office_id: ${entityId}, product: "${product}" }
+      ) {
+        chart_data {
+          key
+          applied_count
+          accepted_count
+          approved_count
+          realized_count
+          finished_count
+          completed_count
+        }
+      }
+    }
+  `;
+}
+
+export async function fetchStatusProgression(entityId: string, from: string, to: string, accessToken: string) {
+  const AIESEC_GRAPHQL_URL = process.env.AIESEC_GRAPHQL_URL;
+  if (!AIESEC_GRAPHQL_URL) {
+    throw new Error("La variable d'environnement AIESEC_GRAPHQL_URL est manquante.");
+  }
+
+  const ogxQuery = buildStatusProgressionQuery(from, to, entityId, 'ogx');
+  const icxQuery = buildStatusProgressionQuery(from, to, entityId, 'icx');
+
+  const promises = [ogxQuery, icxQuery].map(query =>
+    fetch(AIESEC_GRAPHQL_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': accessToken,
+      },
+      body: JSON.stringify({ query }),
+    })
+  );
+
+  const responses = await Promise.all(promises);
+  for (const response of responses) {
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`GraphQL API responded with status ${response.status}: ${errorBody}`);
+    }
+  }
+
+  const [ogxResult, icxResult] = await Promise.all(responses.map(res => res.json()));
+
+  interface ProgressionItem {
+  key: string;
+  applied_count: number;
+  accepted_count: number;
+  approved_count: number;
+  realized_count: number;
+  finished_count: number;
+  completed_count: number;
+}
+
+const formatData = (data: ProgressionItem[]) => {
+    if (!data) return [];
+    return data.map(item => ({
+      month: monthMap[item.key.substring(5, 7)] || item.key,
+      apl: item.applied_count,
+      acc: item.accepted_count,
+      apd: item.approved_count,
+      re: item.realized_count,
+      fin: item.finished_count,
+      co: item.completed_count,
+    }));
+  };
+
+  return {
+    ogx: formatData(ogxResult.data.ogx_progression.chart_data),
+    icx: formatData(icxResult.data.icx_progression.chart_data),
+  };
+}
+

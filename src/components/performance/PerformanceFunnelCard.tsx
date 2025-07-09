@@ -14,20 +14,23 @@ const metricIcons: { [key: string]: React.ReactNode } = {
   completed: <Star size={18} />,
 };
 
+interface ProgramData {
+  [metric: string]: { paging: { total_items: number } };
+}
+
 interface PerformanceFunnelCardProps {
   title: string;
-  data: any;
+  data: ProgramData | null;
   metrics: { [key: string]: string };
-  programKey: 'total' | 'gv' | 'gta' | 'gte';
   color: string;
 }
 
-export function PerformanceFunnelCard({ title, data, metrics, programKey, color }: PerformanceFunnelCardProps) {
+export function PerformanceFunnelCard({ title, data, metrics, color }: PerformanceFunnelCardProps) {
   if (!data) {
     return null;
   }
 
-  const realizedMetric = data?.[`realized_${programKey}`]?.paging?.total_items ?? 0;
+  const realizedMetric = data?.realized?.paging?.total_items ?? 0;
 
   return (
     <Card className={cn("border-t-4", color)}>
@@ -48,7 +51,7 @@ export function PerformanceFunnelCard({ title, data, metrics, programKey, color 
                 <span>{metricLabel}</span>
               </div>
               <span className="font-semibold text-gray-800">
-                {data?.[`${metricKey}_${programKey}`]?.paging?.total_items ?? 0}
+                {data?.[metricKey]?.paging?.total_items ?? 0}
               </span>
             </li>
           ))}

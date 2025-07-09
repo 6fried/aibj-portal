@@ -1,27 +1,48 @@
 "use client"
 
-import { PerformanceFilters } from "@/components/performance/PerformanceFilters"
+import { AnalyticsFilters } from "@/components/analytics/AnalyticsFilters"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/hooks/use-auth"
 import { PerformanceFunnelCard } from "@/components/performance/PerformanceFunnelCard";
 import { DebugQueryCard } from '@/components/analytics/DebugQueryCard'
 import { useEffect, useState, useCallback } from "react"
+import { getTodayRange } from '@/lib/utils/date-helpers';
+import { format } from 'date-fns';
 import { entityList } from '@/lib/data/entities'
 import { PerformanceCardSkeleton } from "@/components/performance/PerformanceCardSkeleton"
-import { Loader2, LayoutDashboard } from "lucide-react"
+import { LayoutDashboard } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
+// Définition de types plus stricts pour les données de performance
+interface ProgramData {
+  [metric: string]: { paging: { total_items: number } };
+}
+
+interface DepartmentData {
+  total: ProgramData;
+  gv: ProgramData;
+  gta: ProgramData;
+  gte: ProgramData;
+}
+
+interface PerformanceData {
+  ogx: DepartmentData;
+  icx: DepartmentData;
+  query?: string;
+}
+
 export default function PerformancePage() {
   const { user } = useAuth()
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [startDate, setStartDate] = useState(getTodayRange().from);
+  const [endDate, setEndDate] = useState(getTodayRange().to);
   const [selectedEntity, setSelectedEntity] = useState('')
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<PerformanceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [cache, setCache] = useState<Record<string, any>>({})
+  const [cache, setCache] = useState<Record<string, PerformanceData>>({})
 
   const isMcvp = user?.role === 'mcvp'
 
@@ -35,16 +56,14 @@ export default function PerformancePage() {
     }
   }, [user, isMcvp])
 
-  const fetchData = useCallback(async (forceRefresh = false) => {
+  const handleApplyFilters = useCallback(async (forceRefresh = false) => {
     if (!selectedEntity) {
       // Ne rien faire si aucune entité n'est sélectionnée
       // L'état de chargement initial s'en chargera
       return;
     }
 
-    const fromDate = `${selectedYear}-01-01`;
-    const toDate = `${selectedYear}-12-31`;
-    const cacheKey = `${selectedEntity}-${selectedYear}`;
+    const cacheKey = `${selectedEntity}-${format(startDate, 'yyyy-MM-dd')}-${format(endDate, 'yyyy-MM-dd')}`;
 
     if (cache[cacheKey] && !forceRefresh) {
       setData(cache[cacheKey]);
@@ -58,7 +77,7 @@ export default function PerformancePage() {
 
     try {
       const response = await fetch(
-        `/api/performance?entityId=${selectedEntity}&from=${fromDate}&to=${toDate}`
+        `/api/performance?entityId=${selectedEntity}&from=${format(startDate, 'yyyy-MM-dd')}&to=${format(endDate, 'yyyy-MM-dd')}`
       );
       if (!response.ok) {
         const errorData = await response.json();
@@ -77,13 +96,14 @@ export default function PerformancePage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedEntity, selectedYear, cache, user?.role])
+  }, [selectedEntity, startDate, endDate, cache])
 
   useEffect(() => {
     if (selectedEntity) {
-      fetchData()
+      handleApplyFilters();
     }
-  }, [selectedEntity, selectedYear, fetchData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEntity]); // Déclenché uniquement au changement d'entité initiale
 
   const ogxMetrics = {
     signup: 'Signup',
@@ -127,21 +147,20 @@ export default function PerformancePage() {
           </div>
         </div>
 
-        {user && user.role === "mcvp" && (
-          <PerformanceFilters 
-            selectedYear={selectedYear}
+        {user && (
+          <AnalyticsFilters 
+            dateRange={{ from: startDate, to: endDate }}
             selectedEntity={selectedEntity}
-            onYearChange={(year) => {
-              setData(null);
-              setSelectedYear(year);
-            }}
-            onEntityChange={(entity) => {
-              setData(null);
-              setSelectedEntity(entity);
-            }}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            onEntityChange={setSelectedEntity}
+            onApplyFilters={handleApplyFilters}
             entityList={entityList}
+            isMcvp={isMcvp}
           />
         )}
+
+
 
         <div className="flex flex-1 flex-col">
           {loading ? (
@@ -151,7 +170,7 @@ export default function PerformancePage() {
               <AlertTitle className="mb-2">Erreur de chargement</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
               <div className="mt-4">
-                <Button onClick={() => fetchData(true)}>Réessayer</Button>
+                <Button onClick={() => handleApplyFilters(true)} className="ml-4">Réessayer</Button>
               </div>
             </Alert>
           ) : data ? (
@@ -169,13 +188,13 @@ export default function PerformancePage() {
                         <PerformanceFunnelCard 
                           key={card.programKey}
                           title={card.title} 
-                          data={data.ogx.data} 
+                          data={data.ogx[card.programKey]} 
                           metrics={ogxMetrics} 
-                          programKey={card.programKey}
                           color={card.color}
                         />
                       ))}
                     </div>
+                    {data.query && <DebugQueryCard query={data.query} />}
                   </TabsContent>
 
                   <TabsContent value="icx" className="pt-6">
@@ -184,12 +203,12 @@ export default function PerformancePage() {
                         <PerformanceFunnelCard 
                           key={card.programKey}
                           title={card.title} 
-                          data={data.icx.data} 
+                          data={data.icx[card.programKey]} 
                           metrics={icxMetrics} 
-                          programKey={card.programKey}
                           color={card.color}
                         />
                       ))}
+                      {data.query && <DebugQueryCard query={data.query} />}
                     </div>
                   </TabsContent>
                 </>
