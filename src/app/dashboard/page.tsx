@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
-import { BarChart, Users } from 'lucide-react'
+import { BarChart, Users, GitCompareArrows, UserPlus, FileSearch } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
@@ -16,6 +16,27 @@ export default function DashboardPage() {
       description: 'Analyze operational performance.',
       href: '/apps/reports',
       icon: <BarChart className="h-8 w-8 text-aiesec-blue" />,
+      enabled: true,
+    },
+    {
+      title: 'E2E Analytics',
+      description: 'Analyze exchanges between two countries.',
+      href: '/apps/e2e-analytics',
+      icon: <GitCompareArrows className="h-8 w-8 text-aiesec-blue" />,
+      enabled: true,
+    },
+    {
+      title: 'Recruitment',
+      description: 'Manage member recruitment applications.',
+      href: '/apps/recruitment',
+      icon: <UserPlus className="h-8 w-8 text-aiesec-blue" />,
+      enabled: true,
+    },
+    {
+      title: 'Leads',
+      description: 'View and manage leads.',
+      href: '/apps/leads',
+      icon: <FileSearch className="h-8 w-8 text-aiesec-blue" />,
       enabled: true,
     },
     // {

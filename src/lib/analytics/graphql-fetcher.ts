@@ -147,6 +147,211 @@ function buildStatusProgressionQuery(from: string, to: string, entityId: string,
   `;
 }
 
+// --- Fonctions pour la page de recrutement ---
+
+function buildMemberLeadQuery(from: string, to: string, homeCommitteeId: number, searchTerm: string, page: number, perPage: number): string {
+  const fromDate = `${from}T00:00:00+01:00`;
+  const toDate = `${to}T23:59:59+01:00`;
+
+  return `
+    query MemberLead {
+      memberLeads(
+        filters: {
+          created_at: {
+            from: "${fromDate}"
+            to: "${toDate}"
+          }
+          q: "${searchTerm}"
+          home_committee: ${homeCommitteeId}
+        },
+        pagination: {
+          page: ${page},
+          per_page: ${perPage}
+        }
+      ) {
+        data {
+          id
+          lead_name
+          date_of_birth
+          email
+          status
+          academic_level {
+            name
+          }
+          backgrounds {
+            constant_name
+          }
+          country_code
+          phone
+          allow_phone_communication
+          created_at
+          home_lc {
+            name
+          }
+        }
+        paging {
+          total_items
+          total_pages
+        }
+      }
+    }
+  `;
+}
+
+function buildPeopleQuery(startDate: string, endDate: string, homeCommitteeId: number, page: number, perPage: number): string {
+  return `
+    query People {
+      people(
+        filters: {
+          registered: {
+            from: "${startDate}T00:00:00+01:00",
+            to: "${endDate}T23:59:59+01:00"
+          },
+          home_committee: [${homeCommitteeId}]
+        },
+        pagination: {
+          per_page: ${perPage},
+          page: ${page}
+        }
+      ) {
+        data {
+          id
+          full_name
+          dob
+          contact_detail {
+            country_code
+            phone
+          }
+          email
+          created_at
+          gender
+          home_lc {
+            name
+          }
+          contacted_at
+        }
+        paging {
+          total_items
+          total_pages
+        }
+      }
+    }
+  `;
+}
+
+function buildCommitteeQuery(committeeId: number): string {
+  return `
+    query Committee {
+      committee(id: ${committeeId}) {
+        suboffices {
+          id
+          name
+        }
+      }
+    }
+  `;
+}
+
+export async function fetchRecruitmentData(from: string, to: string, homeCommitteeId: number, searchTerm: string, page: number, perPage: number, accessToken: string) {
+  const AIESEC_GRAPHQL_URL = process.env.AIESEC_GRAPHQL_URL;
+  if (!AIESEC_GRAPHQL_URL) {
+    throw new Error("La variable d'environnement AIESEC_GRAPHQL_URL est manquante.");
+  }
+
+  const memberLeadQuery = buildMemberLeadQuery(from, to, homeCommitteeId, searchTerm, page, perPage);
+  
+  const response = await fetch(AIESEC_GRAPHQL_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': accessToken,
+    },
+    body: JSON.stringify({ query: memberLeadQuery }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`GraphQL API responded with status ${response.status}: ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+export async function fetchPeopleData(startDate: string, endDate: string, homeCommitteeId: number, page: number, perPage: number, accessToken: string) {
+  const AIESEC_GRAPHQL_URL = process.env.AIESEC_GRAPHQL_URL;
+  if (!AIESEC_GRAPHQL_URL) {
+    throw new Error("La variable d'environnement AIESEC_GRAPHQL_URL est manquante.");
+  }
+
+  const peopleQuery = buildPeopleQuery(startDate, endDate, homeCommitteeId, page, perPage);
+  
+  const response = await fetch(AIESEC_GRAPHQL_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': accessToken,
+    },
+    body: JSON.stringify({ query: peopleQuery }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`GraphQL API responded with status ${response.status}: ${errorBody}`);
+  }
+
+  return response.json();
+}
+
+export function buildContactMemberLeadMutation(id: number): string {
+  return `mutation { contactMemberLead(id: ${id}) { id } }`;
+}
+
+export async function contactMemberLead(id: number, accessToken: string) {
+  const AIESEC_GRAPHQL_URL = process.env.AIESEC_GRAPHQL_URL;
+  if (!AIESEC_GRAPHQL_URL) {
+    throw new Error("La variable d'environnement AIESEC_GRAPHQL_URL est manquante.");
+  }
+  const mutation = buildContactMemberLeadMutation(id);
+  const response = await fetch(AIESEC_GRAPHQL_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': accessToken,
+    },
+    body: JSON.stringify({ query: mutation }),
+  });
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`GraphQL API responded with status ${response.status}: ${errorBody}`);
+  }
+  return response.json();
+}
+
+export async function fetchSubOffices(committeeId: number, accessToken: string) {
+  const AIESEC_GRAPHQL_URL = process.env.AIESEC_GRAPHQL_URL;
+  if (!AIESEC_GRAPHQL_URL) {
+    throw new Error("La variable d'environnement AIESEC_GRAPHQL_URL est manquante.");
+  }
+
+  const committeeQuery = buildCommitteeQuery(committeeId);
+
+  const response = await fetch(AIESEC_GRAPHQL_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': accessToken,
+    },
+    body: JSON.stringify({ query: committeeQuery }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`GraphQL API responded with status ${response.status}: ${errorBody}`);
+  }
+
+  return response.json();
+}
+
 export async function fetchStatusProgression(entityId: string, from: string, to: string, accessToken: string) {
   const AIESEC_GRAPHQL_URL = process.env.AIESEC_GRAPHQL_URL;
   if (!AIESEC_GRAPHQL_URL) {
