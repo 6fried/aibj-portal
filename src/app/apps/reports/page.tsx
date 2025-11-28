@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { ProgramReportTable } from '@/components/analytics/ProgramReportTable';
 import { MonthlyData } from '@/lib/types';
 import { MonthSelector } from '@/components/analytics/MonthSelector';
-import { FileText, LayoutDashboard, Loader2, Globe, Briefcase, GraduationCap } from 'lucide-react';
+import { FileText, Home, Loader2, Globe, Briefcase, GraduationCap, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ReportsPage() {
@@ -59,89 +60,186 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Rapports Mensuels</h2>
-        <Link href="/dashboard" passHref>
-          <Button variant="outline">
-            <LayoutDashboard className="mr-2 h-4 w-4" />
-            Dashboard
-          </Button>
-        </Link>
-      </div>
-
-      <div className='p-4 border rounded-lg my-4 bg-card flex items-center gap-4 flex-wrap'>
-        <MonthSelector selectedMonths={selectedMonths} onApply={handleApplyMonths} />
-        <Button onClick={handleGenerateReport} disabled={loading || selectedMonths.length === 0}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />} 
-          Générer le rapport
-        </Button>
-      </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertTitle>Erreur</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {!reportData && !loading && !error && (
-        <Alert>
-          <LayoutDashboard className="h-4 w-4" />
-          <AlertTitle>Prêt à générer votre rapport</AlertTitle>
-          <AlertDescription>
-            { `Veuillez sélectionner les mois que vous souhaitez analyser et cliquez sur "Générer le rapport" pour commencer.`}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {loading && (
-        <div className="flex items-center justify-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className='ml-4 text-muted-foreground'>Génération du rapport en cours...</p>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="border-b border-border bg-card">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <BarChart3 className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">Performance Reports</h1>
+              <p className="text-sm text-muted-foreground">Monthly analytics and insights</p>
+            </div>
+          </div>
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Home className="h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
         </div>
-      )}
+      </header>
 
-      {reportData && (
-        <Tabs defaultValue="ogx" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="ogx">Outgoing Exchange (OGX)</TabsTrigger>
-            <TabsTrigger value="icx">Incoming Exchange (ICX)</TabsTrigger>
-          </TabsList>
-          <TabsContent value="ogx">
-            <div className="space-y-6 pt-4">
-              <div>
-                <h3 className="text-lg font-semibold flex items-center text-blue-600"><Globe className="mr-2 h-5 w-5" /> oGV Performance</h3>
-                <ProgramReportTable data={reportData} program="gv" type="ogx" />
+      {/* Main Content */}
+      <main className="flex-1 px-6 py-8">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Filters Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Generate Report</CardTitle>
+              <CardDescription>Select the months you want to analyze and generate your performance report</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <MonthSelector selectedMonths={selectedMonths} onApply={handleApplyMonths} />
+                <Button 
+                  onClick={handleGenerateReport} 
+                  disabled={loading || selectedMonths.length === 0}
+                  className="gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4" />
+                      Generate Report
+                    </>
+                  )}
+                </Button>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold flex items-center text-orange-600"><Briefcase className="mr-2 h-5 w-5" /> oGTa Performance</h3>
-                <ProgramReportTable data={reportData} program="gta" type="ogx" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold flex items-center text-teal-600"><GraduationCap className="mr-2 h-5 w-5" /> oGTe Performance</h3>
-                <ProgramReportTable data={reportData} program="gte" type="ogx" />
-              </div>
-            </div>
-          </TabsContent>
-          <TabsContent value="icx">
-            <div className="space-y-6 pt-4">
-              <div>
-                <h3 className="text-lg font-semibold flex items-center text-blue-600"><Globe className="mr-2 h-5 w-5" /> iGV Performance</h3>
-                <ProgramReportTable data={reportData} program="gv" type="icx" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold flex items-center text-orange-600"><Briefcase className="mr-2 h-5 w-5" /> iGTa Performance</h3>
-                <ProgramReportTable data={reportData} program="gta" type="icx" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold flex items-center text-teal-600"><GraduationCap className="mr-2 h-5 w-5" /> iGTe Performance</h3>
-                <ProgramReportTable data={reportData} program="gte" type="icx" />
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      )}
+              {selectedMonths.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedMonths.length} month{selectedMonths.length > 1 ? 's' : ''} selected
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Empty State */}
+          {!reportData && !loading && !error && (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <BarChart3 className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Ready to generate your report</h3>
+                <p className="text-sm text-muted-foreground text-center max-w-md">
+                  {`Select the months you want to analyze and click "Generate Report" to view your performance metrics`}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Loading State */}
+          {loading && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">Generating your report...</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Report Data */}
+          {reportData && (
+            <Tabs defaultValue="ogx" className="space-y-6">
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="ogx">Outgoing (OGX)</TabsTrigger>
+                <TabsTrigger value="icx">Incoming (ICX)</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="ogx" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-gv">
+                      <Globe className="h-5 w-5" />
+                      Global Volunteer (oGV)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProgramReportTable data={reportData} program="gv" type="ogx" />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-gta">
+                      <Briefcase className="h-5 w-5" />
+                      Global Talent (oGTa)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProgramReportTable data={reportData} program="gta" type="ogx" />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-gte">
+                      <GraduationCap className="h-5 w-5" />
+                      Global Teacher (oGTe)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProgramReportTable data={reportData} program="gte" type="ogx" />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="icx" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-gv">
+                      <Globe className="h-5 w-5" />
+                      Global Volunteer (iGV)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProgramReportTable data={reportData} program="gv" type="icx" />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-gta">
+                      <Briefcase className="h-5 w-5" />
+                      Global Talent (iGTa)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProgramReportTable data={reportData} program="gta" type="icx" />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-gte">
+                      <GraduationCap className="h-5 w-5" />
+                      Global Teacher (iGTe)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProgramReportTable data={reportData} program="gte" type="icx" />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

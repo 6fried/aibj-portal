@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { SessionManager } from '@/components/auth/session-manager'
+import AppHeader from '@/components/layout/AppHeader'
+import { AppHeaderProvider } from '@/components/layout/AppHeaderContext'
+import { ToastProvider } from '@/components/ui/toast-provider'
+import 'grapesjs/dist/css/grapes.min.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -33,8 +37,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {children}
-        <SessionManager />
+        <AppHeaderProvider>
+          <ToastProvider>
+            <AppHeader />
+            {children}
+            <SessionManager />
+          </ToastProvider>
+        </AppHeaderProvider>
       </body>
     </html>
   )

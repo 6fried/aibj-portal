@@ -17,7 +17,6 @@ function buildOgxProgramQuery(from: string, to: string, entityId: string, progra
 
   const signupFilter = programId ? `,selected_programmes:${programId}` : '';
   const opportunityFilters = `person_home_lc:${entityId}${programId ? `,programmes:${programId}` : ''}`;
-  const finishedOpportunityFilters = `opportunity_home_lc:${entityId}${programId ? `,programmes:${programId}` : ''}`;
 
   const queryParts = `
     signup_${programName}:people(filters:{registered:{from:"${fromDate}",to:"${toDate}"}${signupFilter}}){paging{total_items}}
@@ -25,7 +24,7 @@ function buildOgxProgramQuery(from: string, to: string, entityId: string, progra
     accepted_${programName}:allOpportunityApplication(filters:{date_an_signed:{from:"${fromDate}",to:"${toDate}"},${opportunityFilters}}){paging{total_items}}
     approved_${programName}:allOpportunityApplication(filters:{date_approved:{from:"${fromDate}",to:"${toDate}"},${opportunityFilters}}){paging{total_items}}
     realized_${programName}:allOpportunityApplication(filters:{date_realized:{from:"${fromDate}",to:"${toDate}"},${opportunityFilters}}){paging{total_items}}
-    finished_${programName}:allOpportunityApplication(filters:{experience_end_date:{from:"${fromDate}",to:"${toDate}"},${finishedOpportunityFilters}}){paging{total_items}}
+    finished_${programName}:allOpportunityApplication(filters:{experience_end_date:{from:"${fromDate}",to:"${toDate}"},${opportunityFilters}}){paging{total_items}}
     completed_${programName}:allOpportunityApplication(filters:{experience_end_date:{from:"${fromDate}",to:"${toDate}"},status:"completed",${opportunityFilters}}){paging{total_items}}
   `;
 

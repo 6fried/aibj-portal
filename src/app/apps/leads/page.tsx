@@ -24,15 +24,8 @@ export default async function LeadsPage() {
   } 
 
   return (
-    <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 bg-gray-50/50 dark:bg-zinc-900/50">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Leads</h1>
-        <p className="text-muted-foreground mt-2">
-          Sélectionnez les filtres pour lancer une recherche.
-        </p>
-      </div>
-
+    <div className="min-h-screen bg-background flex flex-col">
       <LeadsClient offices={offices} />
-    </main>
+    </div>
   );
 }
